@@ -10,7 +10,11 @@
 		"edit": {
 			"model": "Document",
 			"view": "waybill.view",
-			"template": "waybill.template"
+			"template": "waybill.template",
+			"merge": {
+				"schema": "a2demo",
+				"model": "Document.Merge"
+			}
 		}
 	},
 	"dialogs": {
@@ -30,6 +34,14 @@
 			"model": "EUSign",
 			"template": "checkeusign.template",
 			"twoPhase": true
+		},
+		"showLinks": {
+			"model": "",
+			"template": "links.template",
+			"view": "links.dialog"
+		},
+		"testTime": {
+			"model": "Test.Time"
 		}
 	},
 	"commands": {
@@ -59,6 +71,10 @@
 				"Model": "Document",
 				"Schema": "a2demo"
 			}
+		},
+		"saveTime": {
+			"type": "sql",
+			"procedure":  "SaveDocumentTime"
 		}
 	},
 	"reports": {

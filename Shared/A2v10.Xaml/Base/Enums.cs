@@ -60,6 +60,14 @@ namespace A2v10.Xaml
 	}
 
 
+	public enum DropDownPlacement
+	{
+		BottomLeft,
+		BottomRight,
+		TopLeft,
+		TopRight
+	}
+
 
 	public enum GridLinesVisibility
 	{
@@ -209,6 +217,7 @@ namespace A2v10.Xaml
 		ArrowDown,
 		ArrowDownRed,
 		ArrowLeft,
+		ArrowLeftRight,
 		ArrowRight,
 		ArrowUp,
 		ArrowUpGreen,
@@ -221,6 +230,7 @@ namespace A2v10.Xaml
 		Bank,
 		BankAccount,
 		BankUah,
+		Bell,
 		BrandExcel,
 		Calc,
 		Calendar,
@@ -234,6 +244,9 @@ namespace A2v10.Xaml
 		ChartStackedBar,
 		ChartStackedLine,
 		Check,
+		CheckBold,
+		Checkbox,
+		CheckboxChecked,
 		ChevronDown,
 		ChevronLeft,
 		ChevronDoubleLeft,
@@ -242,6 +255,8 @@ namespace A2v10.Xaml
 		ChevronDoubleRight,
 		ChevronRightEnd,
 		ChevronUp,
+		Circle,
+		CircleSmall,
 		Clear,
 		Close,
 		Cloud,
@@ -254,6 +269,8 @@ namespace A2v10.Xaml
 		CommentOutline,
 		CommentPrevious,
 		CommentUrgent,
+		Company,
+		Confirm,
 		CurrencyUah,
 		CurrencyUsd,
 		CurrencyEuro,
@@ -296,12 +313,15 @@ namespace A2v10.Xaml
 		File,
 		FileContent,
 		FileError,
+		FileFailure,
 		FileImage,
 		FileImport,
 		FileLink,
 		FilePreview,
 		FileSignature,
+		FileSuccess,
 		FileUser,
+		FileWarning,
 		Filter,
 		FilterOutline,
 		Folder,
@@ -313,6 +333,7 @@ namespace A2v10.Xaml
 		HelpBlue,
 		HelpOutline,
 		History,
+		Home,
 		Info,
 		InfoBlue,
 		InfoOutline,
@@ -368,6 +389,7 @@ namespace A2v10.Xaml
 		Search,
 		Security,
 		Send,
+		SendOutline,
 		Server,
 		Share,
 		Square,

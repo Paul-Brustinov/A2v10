@@ -2,4 +2,14 @@
 == Solution
 1. Показать в свойствах полное имя файла solution.json
 2. Добавить шаблоны solutions 
- 
+
+
+== Application 
+
+13. Login dialog (сохранять сервер и базу)
+14. Сменить пароль
+15. Выход из интерфейса (account/login?)
+16. Лицензии
+17. Login dialog - sql auth
+
+

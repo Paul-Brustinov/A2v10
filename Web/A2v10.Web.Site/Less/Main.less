@@ -33,17 +33,6 @@ body.waiting * {
 	display: none;
 }
 
-button {
-	font-size: @font-size;
-	border: 1px solid transparent;
-	cursor: pointer;
-
-	&:focus {
-		outline-style: none;
-	}
-}
-
-
 hr {
 	margin: .8rem 0;
 	border: 1px solid @light-gray-color;
@@ -124,12 +113,30 @@ header, .header {
 		}
 	}
 
-	.user-name .person-name {
+	.user-name .person-name,
+	.company-name {
 		display: inline-block;
 		vertical-align: bottom;
 		overflow: hidden;
 		max-width: 20rem;
 		text-overflow: ellipsis;
+		user-select: text;
+	}
+
+	.company-menu-name {
+		max-width: 20rem;
+		text-overflow: ellipsis;
+		overflow: hidden;
+	}
+
+	.dropdown.separate.show {
+		.btn {
+			background-color: @brand-hover-color;
+		}
+
+		.btn.btn-success {
+			background-color: darken(@success-base-color, 5%);
+		}
 	}
 }
 
@@ -267,84 +274,26 @@ footer, .footer {
 	}
 }
 
+@keyframes fadeIn {
+	from {
+		opacity: 0;
+	}
 
-input, select, textarea {
-	border-style: none;
-	font-size: @font-size;
-	color: @text-color;
-
-	&:focus {
-		outline-style: none;
+	to {
+		opacity: 1;
 	}
 }
 
-textarea {
-	padding: 2px @input-padding;
-}
-
-input, select {
-	height: @control-height;
-	padding: 0 @input-padding;
-}
-
-/* hide for focused */
-input::-moz-placeholder,input:focus::-moz-placeholder,textarea::-moz-placeholder,textarea:focus::-moz-placeholder {
-	color: @placeholder-color;
-}
-
-input:-ms-input-placeholder, textarea:-ms-input-placeholder, input:focus:-ms-input-placeholder, textarea:focus:-ms-input-placeholder {
-	color: @placeholder-color;
-}
-
-
-input::-webkit-input-placeholder, input:focus::-webkit-input-placeholder, textarea::-webkit-input-placeholder, textarea:focus::-webkit-input-placeholder {
-	color: @placeholder-color;
-}
-
-select {
-	padding: 0 @select-padding;
-}
-
-textarea {
-	resize: none;
-}
-
-a {
-	color: @link-color;
-	text-decoration: none;
-	cursor: pointer;
-
-	&[disabled] {
-		opacity: 0.5;
-		cursor: not-allowed;
-		//pointer-events: none; // disable click
+keyframes fadeOut {
+	from {
+		opacity: 1;
 	}
 
-	&:hover {
-		color: @link-hover-color;
-		text-decoration: none;
-	}
-
-	&:focus {
-		color: @link-hover-color;
-		outline-style: none;
-	}
-
-	&:active {
-		color: @link-hover-color;
+	to {
+		opacity: 0;
 	}
 }
 
-pre {
-	font-family: @monospace-font;
-	font-size: 0.85em;
-	background-color: @whitesmoke-gray-bg-color;
-	padding: 6px;
-	white-space: pre-wrap;
-	word-break: break-all;
-	word-wrap: break-word;
-	user-select: text;
-}
 
 pre.a2-code {
 	overflow: auto;
@@ -375,6 +324,7 @@ pre.a2-code {
 @import "Card.less";
 @import "Grid.less";
 @import "Layout.less";
+@import "WaitCursor.less";
 
 @import "Sheet.less";
 
@@ -440,22 +390,6 @@ pre.a2-code {
 	}
 }
 
-h2, .h2 {
-	font-size: 1.6em;
-}
-
-h3, .h3 {
-	font-size: 1.2em;
-}
-
-h4, .h4 {
-	font-size: 1em;
-}
-
-h5, .h5 {
-	font-size: 0.85em;
-}
-
 .a2-header {
 	margin: 0 0 .8rem 0;
 	color: @header-text-color;
@@ -478,6 +412,14 @@ h5, .h5 {
 	white-space: nowrap;
 	vertical-align: baseline;
 	border-radius: .25rem;
+}
+
+.a2-badge {
+	background-color: @dark-bk-color;
+	color: white;
+	padding: 0 .2rem .1rem .2rem;
+	border-radius: .25rem;
+	white-space: nowrap;
 }
 
 .xaml-exception {
@@ -505,12 +447,24 @@ h5, .h5 {
 .a2-graphics {
 	display: block;
 	width: 100%;
-	line-height:0;
+	svg {
+		// avoid 3 extra pixels. default alignment is baseline!
+		display:block;
+	}
 }
+
+.center-content {
+	display: flex;
+	width: auto;
+	height: 100%;
+	align-items: center;
+	justify-content: center;
+}
+
 
 .a2-changelog {
 	padding: 1rem;
-	margin-top:-2rem;
+	margin-top: -2rem;
 
 	ol {
 		margin-top: 4px;
@@ -522,7 +476,7 @@ h5, .h5 {
 		color: #777;
 		font-weight: bold;
 		font-family: inherit;
-		margin-top:2rem;
+		margin-top: 2rem;
 	}
 }
 

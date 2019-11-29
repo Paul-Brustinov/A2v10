@@ -1,6 +1,6 @@
 ﻿// Copyright © 2015-2019 Alex Kukhtin. All rights reserved.
 
-// 20190403-7477
+/*20181009-7565*/
 // controllers/base.js
 
 (function () {
@@ -20,7 +20,7 @@
 	const htmlTools = require('std:html', true /*no error*/);
 
 	const store = component('std:store');
-	const documentTitle = component("std:doctitle", true /*no error*/);
+	const documentTitle = component('std:doctitle', true /*no error*/);
 
 	let __updateStartTime = 0;
 	let __createStartTime = 0;
@@ -46,6 +46,24 @@
 		return ra.length ? ra : null;
 	}
 
+	function isPermissionsDisabled(opts, arg) {
+		if (opts && opts.checkPermission) {
+			if (utils.isObjectExact(arg)) {
+				if (arg.$permissions) {
+					let perm = arg.$permissions;
+					let prop = opts.checkPermission;
+					if (prop in perm) {
+						if (!perm[prop])
+							return true;
+					} else {
+						console.error(`invalid permssion name: '${prop}'`);
+					}
+				}
+			}
+		}
+		return false;
+	}
+
 	const base = Vue.extend({
 		// inDialog: Boolean (in derived class)
 		// pageTitle: String (in derived class)
@@ -59,7 +77,8 @@
 				__baseUrl__: '',
 				__baseQuery__: {},
 				__requestsCount__: 0,
-				__lockQuery__: true
+				__lockQuery__: true,
+				__testId__: null
 			};
 		},
 
@@ -108,23 +127,13 @@
 			$exec(cmd, arg, confirm, opts) {
 				if (this.$isReadOnly(opts)) return;
 				if (this.$isLoading) return;
+
+				if (isPermissionsDisabled(opts, arg)) {
+					this.$alert(locale.$PermissionDenied);
+					return;
+				}
 				const root = this.$data;
 				return root._exec_(cmd, arg, confirm, opts);
-                /*
-                const doExec = () => {
-                    let root = this.$data;
-                    if (!confirm)
-                        root._exec_(cmd, arg, confirm, opts);
-                    else
-                        this.$confirm(confirm).then(() => root._exec_(cmd, arg));
-                }
-
-                if (opts && opts.saveRequired && this.$isDirty) {
-                    this.$save().then(() => doExec());
-                } else {
-                    doExec();
-                }
-                */
 			},
 
 			$toJson(data) {
@@ -379,8 +388,9 @@
 				eventBus.$emit('closeAllPopups');
 				let urlToNavigate = urltools.createUrlForNavigate(url, data);
 				if (newWindow === true) {
-					let nwin = window.open(urlToNavigate, "_blank");
-					nwin.$$token = { token: this.__currentToken__, update: update };
+                    let nwin = window.open(urlToNavigate, "_blank");
+                    if (nwin)
+                        nwin.$$token = { token: this.__currentToken__, update: update };
 				}
 				else
 					this.$store.commit('navigate', { url: urlToNavigate });
@@ -388,8 +398,9 @@
 
 			$navigateSimple(url, newWindow, update) {
 				if (newWindow === true) {
-					let nwin = window.open(url, "_blank");
-					nwin.$$token = { token: this.__currentToken__, update: update };
+                    let nwin = window.open(url, "_blank");
+                    if (nwin)
+                        nwin.$$token = { token: this.__currentToken__, update: update };
 				}
 				else
 					this.$store.commit('navigate', { url: url });
@@ -397,7 +408,7 @@
 
 			$navigateExternal(url, newWindow) {
 				if (newWindow === true) {
-					let nwin = window.open(url, "_blank");
+					window.open(url, "_blank");
 				}
 				else
 					window.location.assign(url);
@@ -409,6 +420,24 @@
 				window.location = root + url;
 			},
 
+			$file(url, arg, opts) {
+				const root = window.$$rootUrl;
+				let id = arg;
+				if (arg && utils.isObject(arg))
+					id = utils.getStringId(arg);
+				let fileUrl = urltools.combine(root, '_file', url, id);
+				switch ((opts || {}).action) {
+					case 'download':
+						htmlTools.downloadUrl(fileUrl + '?export=1');
+						break;
+					case 'print':
+						htmlTools.printDirect(fileUrl);
+						break;
+					default:
+						window.open(fileUrl, '_blank');
+				}
+			},
+
 			$attachment(url, arg, opts) {
 				const root = window.$$rootUrl;
 				let cmd = opts && opts.export ? 'export' : 'show';
@@ -416,7 +445,7 @@
 				if (arg && utils.isObject(arg))
 					id = utils.getStringId(arg);
 				let attUrl = urltools.combine(root, 'attachment', cmd, id);
-				let qry = { base: url};
+				let qry = { base: url };
 				attUrl = attUrl + urltools.makeQueryString(qry);
 				if (opts && opts.newWindow)
 					window.open(attUrl, '_blank');
@@ -445,9 +474,14 @@
 				});
 			},
 
-			$dbRemove(elem, confirm) {
+			$dbRemove(elem, confirm, opts) {
 				if (!elem)
 					return;
+
+				if (isPermissionsDisabled(opts, elem)) {
+					this.$alert(locale.$PermissionDenied);
+					return;
+				}
 				if (this.$isLoading) return;
 				let id = elem.$id;
 				let lazy = elem.$parent.$isLazy ? elem.$parent.$isLazy() : false;
@@ -483,12 +517,12 @@
 				}
 			},
 
-			$dbRemoveSelected(arr, confirm) {
+			$dbRemoveSelected(arr, confirm, opts) {
 				if (this.$isLoading) return;
 				let sel = arr.$selected;
 				if (!sel)
 					return;
-				this.$dbRemove(sel, confirm);
+				this.$dbRemove(sel, confirm, opts);
 			},
 
 			$openSelectedFrame(url, arr) {
@@ -532,6 +566,7 @@
 			},
 
 			$confirm(prms) {
+				// TODO: tools
 				if (utils.isString(prms))
 					prms = { message: prms };
 				prms.style = prms.style || 'confirm';
@@ -548,6 +583,12 @@
 
 			$alert(msg, title, list) {
 				// TODO: tools
+				if (utils.isObject(msg) && !title && !list) {
+					let prms = msg;
+					msg = prms.message || prms.msg;
+					title = prms.title;
+					list = prms.list;
+				}
 				let dlgData = {
 					promise: null, data: {
 						message: msg, title: title, style: 'alert', list: list
@@ -610,6 +651,13 @@
 
 				function doDialog() {
 					// result always is raw data
+					if (isPermissionsDisabled(opts, arg)) {
+						that.$alert(locale.$PermissionDenied);
+						return;
+					}
+					if (utils.isFunction(query)) {
+						query = query();
+					}
 					switch (command) {
 						case 'new':
 							if (argIsNotAnArray()) return;
@@ -670,7 +718,8 @@
 					return;
 				}
 
-				if (opts && opts.saveRequired && this.$isDirty) {
+				let mo = this.$data.$mainObject;
+				if (opts && opts.saveRequired && (this.$isDirty || mo && mo.$isNew)) {
 					let dlgResult = null;
 					this.$save().then(() => { dlgResult = doDialog(); });
 					return dlgResult;
@@ -678,13 +727,17 @@
 				return doDialog();
 			},
 
-			$export() {
+			$export(arg, url, dat) {
 				if (this.$isLoading) return;
+
+				let id = arg || '0';
+				if (arg && utils.isObject(arg))
+					id = utils.getStringId(arg);
 				const self = this;
 				const root = window.$$rootUrl;
-				let url = self.$baseUrl;
-				url = url.replace('/_page/', '/_export/');
-				window.location = root + url;
+				let newurl = url ? urltools.combine('/_export', url, id) : self.$baseUrl.replace('/_page/', '/_export/');
+				newurl = urltools.combine(root, newurl) + urltools.makeQueryString(dat);
+				window.location = newurl; // to display errors
 			},
 
 			$exportTo(format, fileName) {
@@ -785,6 +838,10 @@
 
 			$modalClose(result) {
 				eventBus.$emit('modalClose', result);
+			},
+
+			$setFilter(obj, prop, val) {
+				eventBus.$emit('setFilter', { source: obj, prop: prop, value: val });
 			},
 
 			$modalSelect(array, opts) {
@@ -994,6 +1051,33 @@
 				return '';
 			},
 
+			$getErrors(severity) {
+				let errs = this.$data.$forceValidate();
+				if (!errs || !errs.length)
+					return null;
+
+				if (severity && !utils.isArray(severity))
+					severity = [severity];
+
+				function isInclude(sev) {
+					if (!severity)
+						return true; // include
+					if (severity.indexOf(sev) !== -1)
+						return true;
+					return false;
+				}
+
+				let result = [];
+				for (let x of errs) {
+					for (let ix = 0; ix < x.e.length; ix++) {
+						let y = x.e[ix];
+						if (isInclude(y.severity))
+							result.push({ path: x, msg: y.msg, severity: y.severity, index: ix });
+					}
+				}
+				return result.length ? result : null;
+			},
+
 			__beginRequest() {
 				this.$data.__requestsCount__ += 1;
 			},
@@ -1052,7 +1136,8 @@
 					$reload: this.$reload,
 					$notifyOwner: this.$notifyOwner,
 					$navigate: this.$navigate,
-					$defer: platform.defer
+					$defer: platform.defer,
+					$setFilter: this.$setFilter
 				};
 				Object.defineProperty(ctrl, "$isDirty", {
 					enumerable: true,
@@ -1096,6 +1181,22 @@
 				let arg = { url: this.$baseUrl, result: false };
 				eventBus.$emit('isModalRequery', arg);
 				return arg.result;
+			},
+			__invoke__test__(args) {
+				args = args || {};
+				if (args.target !== 'controller')
+					return;
+				if (args.testId !== this.__testId__)
+					return;
+				const root = this.$data;
+				switch (args.action) {
+					case 'eval':
+						args.result = utils.eval(root, args.path);
+						break;
+				}
+			},
+			__global_period_changed__(period) {
+				this.$data._fireGlobalPeriodChanged_(period);
 			}
 		},
 		created() {
@@ -1107,6 +1208,8 @@
 			eventBus.$on('endRequest', this.__endRequest);
 			eventBus.$on('queryChange', this.__queryChange);
 			eventBus.$on('childrenSaved', this.__notified);
+			eventBus.$on('invokeTest', this.__invoke__test__);
+			eventBus.$on('globalPeriodChanged', this.__global_period_changed__);
 
 			// TODO: delete this.__queryChange
 			this.$on('localQueryChange', this.__queryChange);
@@ -1117,6 +1220,7 @@
 				log.time('create time:', __createStartTime, false);
 		},
 		beforeDestroy() {
+			this.$data._fireUnload_();
 		},
 		destroyed() {
 			//console.dir('base.js has been destroyed');
@@ -1125,6 +1229,8 @@
 			eventBus.$off('endRequest', this.__endRequest);
 			eventBus.$off('queryChange', this.__queryChange);
 			eventBus.$off('childrenSaved', this.__notified);
+			eventBus.$off('invokeTest', this.__invoke__test__);
+			eventBus.$off('globalPeriodChanged', this.__global_period_changed__);
 
 			this.$off('localQueryChange', this.__queryChange);
 			this.$off('cwChange', this.__cwChange);
@@ -1135,6 +1241,11 @@
 		},
 		beforeCreate() {
 			__createStartTime = performance.now();
+		},
+		mounted() {
+			let testId = this.$el.getAttribute('test-id');
+			if (testId)
+				this.__testId__ = testId;
 		},
 		updated() {
 			if (log)

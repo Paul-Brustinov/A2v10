@@ -1,18 +1,16 @@
-﻿// Copyright © 2015-2018 Alex Kukhtin. All rights reserved.
+﻿// Copyright © 2015-2019 Alex Kukhtin. All rights reserved.
 
 using System;
-
 using A2v10.Infrastructure;
 
 namespace A2v10.Xaml
 {
 
-	public enum SelectorPanelPlacement {
+	public enum SelectorStyle
+	{
 		Default,
-		BottomLeft = Default,
-		BottomRight,
-		TopLeft,
-		TopRight
+		ComboBox,
+		Hyperlink
 	}
 
 
@@ -30,12 +28,17 @@ namespace A2v10.Xaml
 
 		public Object TextValue { get; set; }
 
+		public Object ItemsSource { get; set; }
 		public UIElementBase ItemsPanel { get; set; }
-		public SelectorPanelPlacement PanelPlacement { get; set; }
+		public DropDownPlacement PanelPlacement { get; set; }
 
-		public Boolean ShowCaret { get; set; }
+		public Boolean? ShowCaret { get; set; }
+		public Boolean ShowClear { get; set; }
 
-		internal override void RenderElement(RenderContext context, Action<TagBuilder> onRender = null)
+		public SelectorStyle Style { get; set; }
+		public ControlSize Size { get; set; }
+
+		public override void RenderElement(RenderContext context, Action<TagBuilder> onRender = null)
 		{
 			if (CheckDisabledModel(context))
 				return;
@@ -46,8 +49,12 @@ namespace A2v10.Xaml
 			if (!String.IsNullOrEmpty(SetDelegate))
 				input.MergeAttribute(":hitfunc", $"$delegate('{SetDelegate}')");
 			input.MergeAttribute("display", DisplayProperty);
-			if (PanelPlacement != SelectorPanelPlacement.Default)
+			if (PanelPlacement != DropDownPlacement.BottomLeft)
 				input.MergeAttribute("placement", PanelPlacement.ToString().ToKebabCase());
+			if (Style != SelectorStyle.Default)
+				input.MergeAttribute("mode", Style.ToString().ToKebabCase());
+			if (Size != ControlSize.Default)
+				input.AddCssClass($"sel-{Size.ToString().ToLowerInvariant()}");
 			if (ListSize != null)
 			{
 				if (!ListSize.Width.IsEmpty)
@@ -57,8 +64,15 @@ namespace A2v10.Xaml
 					input.MergeAttribute("list-height", ListSize.Height.ToString());
 				}
 			}
-			if (ShowCaret)
+			if (ShowCaret.HasValue && ShowCaret.Value)
 				input.MergeAttribute(":caret", "true");
+			if (ShowClear)
+				input.MergeAttribute(":has-clear", "true");
+
+			var isBind = GetBinding(nameof(ItemsSource));
+			if (isBind != null)
+				input.MergeAttribute(":items-source", isBind.GetPath(context));
+
 			MergeAttributes(input, context);
 			MergeDisabled(input, context);
 			MergeAlign(input, context, Align);
@@ -124,6 +138,13 @@ namespace A2v10.Xaml
 				});
 			}
 			tml.RenderEnd(context);
+		}
+
+		protected override void OnEndInit()
+		{
+			base.OnEndInit();
+			if (Style == SelectorStyle.ComboBox && !ShowCaret.HasValue)
+				ShowCaret = true;
 		}
 	}
 }

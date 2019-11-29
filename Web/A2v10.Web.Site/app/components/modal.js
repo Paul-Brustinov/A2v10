@@ -1,6 +1,6 @@
 ﻿// Copyright © 2015-2019 Alex Kukhtin. All rights reserved.
 
-// 20190305-7456
+// 20190905-7553
 // components/modal.js
 
 
@@ -47,6 +47,8 @@
 						mw.style.width = '300px'; // from less
 						break;
 				}
+				if (binding.value.minWidth)
+					mw.style.minWidth = binding.value.minWidth;
 			}
 		}
 	};
@@ -219,13 +221,9 @@
 				if (this.dialog.buttons)
 					return this.dialog.buttons;
 				else if (this.dialog.style === 'alert')
-					return [{ text: okText, result: false, tabindex: 1 }];
-				else if (this.dialog.style === 'alert-ok') {
-					this.dialog.style = 'alert';
 					return [{ text: okText, result: true, tabindex: 1 }];
-				}
 				else if (this.dialog.style === 'info')
-					return [{ text: okText, result: false, tabindex:1 }];
+					return [{ text: okText, result: true, tabindex:1 }];
 				return [
 					{ text: okText, result: true, tabindex:2 },
 					{ text: cancelText, result: false, tabindex:1 }

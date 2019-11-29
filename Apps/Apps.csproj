@@ -49,6 +49,10 @@
     <None Include="Admin\Identity\Role\model.json" />
     <None Include="Admin\Identity\User\model.json" />
     <None Include="bundleconfig.json" />
+    <None Include="compilerconfig.json" />
+    <None Include="compilerconfig.json.defaults">
+      <DependentUpon>compilerconfig.json</DependentUpon>
+    </None>
     <None Include="Develop\Agent\model.json" />
     <None Include="Develop\dashboard\model.json" />
     <None Include="Develop\links.json" />
@@ -64,7 +68,30 @@
     <None Include="Develop\Reports\model.json" />
     <None Include="Develop\sales\assets\model.json" />
     <None Include="Develop\sales\document\model.json" />
+    <None Include="Develop\sales\invoice\define.json" />
+    <None Include="..\..\A2v10.Data\A2v10.Data.Tests\TestFiles\_data.defs.json">
+      <Link>Develop\sales\invoice\_data.defs.json</Link>
+    </None>
     <None Include="Develop\sql.json" />
+    <TypeScriptCompile Include="Develop\sales\waybill\waybill2.template.ts" />
+    <Content Include="Develop\sales\waybill\empty.template.js" />
+    <Content Include="Develop\sales\waybill\links.template.js" />
+    <Content Include="Develop\_assets\doclinks.css">
+      <DependentUpon>doclinks.less</DependentUpon>
+    </Content>
+    <Content Include="Develop\_assets\doclinks.min.css">
+      <DependentUpon>doclinks.css</DependentUpon>
+    </Content>
+    <Content Include="Develop\_assets\toolbar.css">
+      <DependentUpon>toolbar.less</DependentUpon>
+    </Content>
+    <Content Include="Develop\_assets\toolbar.min.css">
+      <DependentUpon>toolbar.css</DependentUpon>
+    </Content>
+    <Content Include="tsconfig.json" />
+    <None Include="Develop\_assets\doclinks.less" />
+    <None Include="Develop\_assets\toolbar.less" />
+    <None Include="Develop\_tests\Tests.Runner.config" />
     <None Include="VueSite\blog\model.json" />
   </ItemGroup>
   <ItemGroup>
@@ -343,9 +370,11 @@
   <ItemGroup>
     <Folder Include="Develop\Localization\" />
     <Folder Include="Develop\_files\" />
+    <Folder Include="Develop\_interfaces\" />
     <Folder Include="Develop\_localization\" />
     <Folder Include="Develop\_platform\" />
     <Folder Include="Develop\_static\" />
+    <Folder Include="Develop\_tests\dialogs\more dialog\" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Develop\Agent\browseCustomer.dialog.xaml">
@@ -490,6 +519,25 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="Develop\Workflows\Messaging.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <TypeScriptCompile Include="%40types\platform.d.ts" />
+    <TypeScriptCompile Include="Develop\sales\invoice\invoice2.template.ts" />
+    <TypeScriptCompile Include="Develop\sales\invoice\model.d.ts" />
+    <TypeScriptCompile Include="Develop\sales\waybill\model.d.ts" />
+    <TypeScriptCompile Include="_declarations\a2v10.d.ts" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Develop\sales\waybill\links.dialog.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Develop\_tests\dialogs\CreateAgent.feature.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </None>

@@ -19,7 +19,7 @@ namespace A2v10.Web.Identity
 		PhoneNumber = 0x0010
 	}
 
-	public class AppUser : IUser<Int64>
+	public class AppUser : IUser<Int64>, IEquatable<AppUser>
 	{
 		#region IUser<Int64>
 		public Int64 Id { get; set; }
@@ -31,6 +31,7 @@ namespace A2v10.Web.Identity
 		public Int32 Tenant { get; set; }
 		public String Email { get; set; }
 		public String PhoneNumber { get; set; }
+		public String Memo { get; set; }
 
 		public String PasswordHash { get; set; }
 		public String SecurityStamp { get; set; }
@@ -41,7 +42,16 @@ namespace A2v10.Web.Identity
 		public Boolean EmailConfirmed { get; set; }
 		public Boolean PhoneNumberConfirmed { get; set; }
 		public Boolean ChangePasswordEnabled { get; set; }
+		// for multi tenant environment
 		public String RegisterHost { get; set; }
+		public String TariffPlan { get; set; }
+
+		// for CreateTenantUser only
+		public String TenantRoles { get; set; }
+		public Boolean IsTenantAdmin { get; set; }
+
+		// optional (for delete)
+		public Int64 CurrentUser { get; set; }
 
 		DateTime? _lastLoginDate;
 		String _lastLoginHost;
@@ -91,6 +101,50 @@ namespace A2v10.Web.Identity
 			var userIdentity = await manager.CreateIdentityAsync(this, DefaultAuthenticationTypes.ApplicationCookie);
 			// Add custom user claims here
 			return userIdentity;
+		}
+
+		public Boolean Equals(AppUser other)
+		{
+			return 
+				Id         == other.Id && 
+				UserName   == other.UserName &&
+				PersonName == other.PersonName &&
+				IsAdmin    == other.IsAdmin &&
+				Tenant     == other.Tenant &&
+				Email      == other.Email &&
+				Memo       == other.Memo &&
+				PhoneNumber   == other.PhoneNumber &&
+				PasswordHash  == other.PasswordHash &&
+				SecurityStamp == other.SecurityStamp &&
+				LockoutEndDateUtc == other.LockoutEndDateUtc &&
+				AccessFailedCount == other.AccessFailedCount &&
+				LockoutEnabled   == other.LockoutEnabled &&
+				TwoFactorEnabled == other.TwoFactorEnabled &&
+				EmailConfirmed   == other.EmailConfirmed &&
+				PhoneNumberConfirmed  == other.PhoneNumberConfirmed &&
+				ChangePasswordEnabled == other.ChangePasswordEnabled &&
+				RegisterHost  == other.RegisterHost &&
+				TariffPlan    == other.TariffPlan &&
+				TenantRoles   == other.TenantRoles &&
+				IsTenantAdmin == other.IsTenantAdmin &&
+				CurrentUser   == other.CurrentUser;
+		}
+
+		public String GetClientId()
+		{
+			if (RegisterHost == null)
+				return null;
+			if (RegisterHost.Length < 3)
+				return null;
+			if (Tenant == 0)
+				return null;
+			// a-la SQL GetClientId
+			var x = RegisterHost.Substring(0, 3).ToUpperInvariant();
+			if (x[1] == 'O')
+				x = x.Substring(0, 1) + x.Substring(2, 1);
+			else
+				x = x.Substring(0, 2);
+			return $"{x}-{Tenant}";
 		}
 	}
 }

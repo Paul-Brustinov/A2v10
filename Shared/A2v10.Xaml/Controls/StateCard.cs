@@ -22,18 +22,21 @@ namespace A2v10.Xaml
 		public Object Text { get; set; }
 		public CardStyle Style {get; set;}
 		public Boolean Compact { get; set; }
+		public Length MinWidth { get; set; }
 
 		public ShadowStyle DropShadow { get; set; }
 
 		public Icon Icon { get; set; }
 
-		internal override void RenderElement(RenderContext context, Action<TagBuilder> onRender = null)
+		public override void RenderElement(RenderContext context, Action<TagBuilder> onRender = null)
 		{
 			if (SkipRender(context))
 				return;
 			var panel = new TagBuilder("div", "a2-state-card", IsInGrid);
 			onRender?.Invoke(panel);
 			MergeAttributes(panel, context);
+			if (MinWidth != null)
+				panel.MergeStyleUnit("min-width", MinWidth.Value);
 
 			if (DropShadow != ShadowStyle.None)
 			{

@@ -22,7 +22,7 @@ namespace A2v10.Xaml
 		public Length Height { get; set; }
 		public Boolean FullHeight { get; set; }
 
-		internal override void RenderElement(RenderContext context, Action<TagBuilder> onRender = null)
+		public override void RenderElement(RenderContext context, Action<TagBuilder> onRender = null)
 		{
 			if (SkipRender(context))
 				return;
@@ -35,7 +35,7 @@ namespace A2v10.Xaml
 			if (headerBind != null)
 				tab.MergeAttribute(":header", headerBind.GetPathFormat(context));
 			else if (Header is String)
-				tab.MergeAttribute("header", context.Localize(Header?.ToString()));
+				tab.MergeAttribute("header", context.LocalizeCheckApostrophe(Header?.ToString()));
 			var badgeBind = GetBinding(nameof(Badge));
 			if (badgeBind != null)
 				tab.MergeAttribute(":badge", badgeBind.GetPathFormat(context));

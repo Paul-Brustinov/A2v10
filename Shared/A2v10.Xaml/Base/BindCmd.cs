@@ -47,7 +47,8 @@ namespace A2v10.Xaml
 		Attachment,
 		Help,
 		EUSign,
-		ExportTo
+		ExportTo,
+		File
 	}
 
 	public enum DialogAction
@@ -62,6 +63,14 @@ namespace A2v10.Xaml
 		Copy
 	}
 
+	public enum FileAction
+	{
+		Unknown,
+		Show,
+		Download,
+		Print
+	}
+
 	public enum ExportToFormat
 	{
 		Pdf,
@@ -69,6 +78,16 @@ namespace A2v10.Xaml
 		Word,
 		OpenText,
 		OpenSheet
+	}
+
+	public enum Permission
+	{
+		None = 0,
+		CanView = 1,
+		CanEdit = 2,
+		CanDelete = 4,
+		CanApply = 8,
+		CanUnapply = 16,
 	}
 
 	public class BindCmd : BindBase
@@ -80,6 +99,7 @@ namespace A2v10.Xaml
 		public String UpdateAfter { get; set; }
 		public String Url { get; set; }
 		public DialogAction Action { get; set; }
+		public FileAction FileAction { get; set; }
 
 		public String Execute { get; set; }
 		public String CommandName { get; set; }
@@ -101,6 +121,8 @@ namespace A2v10.Xaml
 
 		public ExportToFormat Format { get; set; }
 		public String FileName { get; set; }
+
+		public Permission Permission { get; set; }
 
 		public BindCmd()
 		{
@@ -191,11 +213,10 @@ namespace A2v10.Xaml
 					return $"$removeSelected({CommandArgument(context)}, {GetConfirm(context)})";
 
 				case CommandType.DbRemove:
-					return $"$dbRemove({CommandArgument(context)}, {GetConfirm(context)})";
+					return $"$dbRemove({CommandArgument(context)}, {GetConfirm(context)}, {GetOptions(context)})";
 
 				case CommandType.DbRemoveSelected:
-					return $"$dbRemoveSelected({CommandArgument(context)}, {GetConfirm(context)})";
-
+					return $"$dbRemoveSelected({CommandArgument(context)}, {GetConfirm(context)}, {GetOptions(context)})";
 
 				case CommandType.MailTo:
 					return null;
@@ -264,10 +285,13 @@ namespace A2v10.Xaml
 						$"{GetOptions(context)}, {CommandUrlOptional(context)}, {GetData(context)})";
 
 				case CommandType.Export:
-					return $"$export()";
+					return $"$export({CommandArgument(context, nullable:true)}, {CommandUrlOptional(context)}, {GetData(context)})";
 
 				case CommandType.ExportTo:
 					return $"$exportTo('{Format}', {CommandFileName(context)})";
+
+				case CommandType.File:
+					return $"$file({CommandUrl(context)}, {CommandArgument(context)}, {GetOptionsForFile(context)})";
 
 				case CommandType.Dialog:
 					if (Action == DialogAction.Unknown)
@@ -284,7 +308,7 @@ namespace A2v10.Xaml
 						// command, url, data
 						return $"{{cmd:$dialog, isDialog:true, arg1:'{action}', arg2:{CommandUrl(context, decorate:true)}, arg3: '{arg3}'}}";
 					}
-					return $"$dialog('{action}', {CommandUrl(context)}, {CommandArgument(context, bNullable)}, {GetData(context)}, {GetOptions(context)})";
+					return $"$dialog('{action}', {CommandUrl(context)}, {CommandArgument(context, bNullable)}, {GetData(context, func:true)}, {GetOptions(context)})";
 				case CommandType.EUSign:
 					return $"$eusign({CommandUrl(context)}, {CommandArgument(context)})";
 				default:
@@ -310,7 +334,8 @@ namespace A2v10.Xaml
 
 		String GetOptions(RenderContext context)
 		{
-			if (!SaveRequired && !ValidRequired && !CheckReadOnly && !Export && !Print && !NewWindow && !CheckArgument && !ReloadAfter)
+			if (!SaveRequired && !ValidRequired && !CheckReadOnly && !Export && !Print && !NewWindow 
+				&& !CheckArgument && !ReloadAfter && Permission == Permission.None)
 				return nullString;
 			StringBuilder sb = new StringBuilder("{");
 			if (SaveRequired)
@@ -321,6 +346,8 @@ namespace A2v10.Xaml
 				sb.Append("checkReadOnly: true,");
 			if (CheckArgument)
 				sb.Append("checkArgument: true,");
+			if (Permission != Permission.None)
+				sb.Append($"checkPermission: '{Permission.ToString().ToCamelCase()}'");
 			if (Export)
 			{
 				sb.Append("export: true,");
@@ -335,6 +362,13 @@ namespace A2v10.Xaml
 			sb.RemoveTailComma();
 			sb.Append("}");
 			return sb.ToString();
+		}
+
+		String GetOptionsForFile(RenderContext context)
+		{
+			if (FileAction == FileAction.Unknown)
+				return nullString;
+			return $"{{action: '{FileAction.ToString().ToLowerInvariant()}'}}";
 		}
 
 		String GetOptionsValid(RenderContext context)
@@ -378,11 +412,15 @@ namespace A2v10.Xaml
 			return arg;
 		}
 
-		String GetData(RenderContext context)
+		String GetData(RenderContext context, Boolean func = false)
 		{
 			var dataBind = GetBinding(nameof(Data));
 			if (dataBind != null)
+			{
+				if (func)
+					return $"()=>{dataBind.GetPath(context)}"; // FUNCTION!!!
 				return dataBind.GetPath(context);
+			}
 			else if (Data != null)
 				return $"'{Data}'";
 			return nullString;

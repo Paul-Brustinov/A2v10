@@ -12,6 +12,13 @@
 #define IDS_LANGUAGES                   12001
 #define IDS_TOOLBAR_STANDARD			12002
 #define IDS_TOOLBAR_DEBUG				12003
+#define IDS_LIC_ERROR_BASE		13000
+#define IDS_LIC_NOT_INSTALLED	13001
+#define IDS_LIC_ERR_SIGNATURE	13002
+#define LIC_ERR_EXPIRED			13003
+#define LIC_ERR_COMPANY_CODE	13004
+#define LIC_ERR_FILE_CORRUPT	13005
+#define LIC_ERR_UNKNOWN			13006
 #define IDC_DIALOG_FIRST                14000
 #define IDC_COMBO1                      14001
 #define IDC_COMBO2                      14002
@@ -47,6 +54,7 @@
 #define IDS_ID_TOOLS_OPTIONS			17001
 #define IDS_ID_SHOW_DEVTOOLS			17002
 #define IDS_LOADING						18000
+#define ID_APP_LICENSE                  32007
 #define ID_SHOW_DEVTOOLS				32154
 #define ID_TOOLS_OPTIONS                32400
 

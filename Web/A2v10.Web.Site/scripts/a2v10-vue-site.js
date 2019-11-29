@@ -1,6 +1,6 @@
 // Copyright © 2015-2019 Alex Kukhtin. All rights reserved.
 
-// 20190226-7444
+// 20190813-7521
 // app.js
 
 "use strict";
@@ -15,6 +15,9 @@
 
 	window.require = require;
 	window.component = component;
+
+	// amd typescript support
+	window.define = define;
 
 	let rootElem = document.querySelector('meta[name=rootUrl]');
 	window.$$rootUrl = rootElem ? rootElem.content || '' : '';
@@ -46,6 +49,15 @@
 	function nextToken() {
 		return '' + currentToken++;
 	}
+
+	function define(args, factory) {
+		let exports = {
+			default: undefined
+		};
+		factory(require, exports);
+		return exports.default;
+	}
+
 })();
 // Copyright © 2015-2018 Alex Kukhtin. All rights reserved.
 
@@ -86,10 +98,16 @@ app.modules['std:locale'] = function () {
 		if (!pElem)
 			return;
 		let parentRect = pElem.getBoundingClientRect();
-		if (elRect.top < parentRect.top)
-			el.scrollIntoView(true);
-		else if (elRect.bottom > parentRect.bottom)
-			el.scrollIntoView(false);
+		if (elRect.top < parentRect.top) {
+			//pElem.scrollTop -= parentRect.top - elRect.top + 1;
+			//el.scrollIntoView(true);
+			el.scrollIntoView({ block: 'nearest' });
+		}
+		else if (elRect.bottom > parentRect.bottom) {
+			//pElem.scrollTop += elRect.bottom - parentRect.bottom + 1;
+			el.scrollIntoView({ block: 'nearest' });
+			//el.scrollIntoView(false);
+		}
 	};
 
 
@@ -137,7 +155,28 @@ app.modules['std:locale'] = function () {
 
 // Copyright © 2015-2019 Alex Kukhtin. All rights reserved.
 
-// 20190414-7485
+/*20190704-7504*/
+/* services/const.js */
+
+app.modules['std:const'] = function () {
+
+	return {
+		SEVERITY: {
+			ERROR: 'error',
+			WARNING: 'warning',
+			INFO: 'info'
+		}
+	};
+};
+
+
+
+
+
+
+// Copyright © 2015-2019 Alex Kukhtin. All rights reserved.
+
+// 20191017-7568
 // services/utils.js
 
 app.modules['std:utils'] = function () {
@@ -156,6 +195,8 @@ app.modules['std:utils'] = function () {
 
 	const currencyFormat = new Intl.NumberFormat(numLocale, { minimumFractionDigits: 2, maximumFractionDigits: 6, useGrouping: true }).format;
 	const numberFormat = new Intl.NumberFormat(numLocale, { minimumFractionDigits: 0, maximumFractionDigits: 6, useGrouping: true }).format;
+
+	const utcdatRegEx = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/;
 
 	let numFormatCache = {};
 
@@ -202,7 +243,8 @@ app.modules['std:utils'] = function () {
 			endOfMonth: endOfMonth,
 			minDate: dateCreate(1901, 1, 1),
 			maxDate: dateCreate(2999, 12, 31),
-			fromDays: fromDays
+			fromDays: fromDays,
+			parseTime: timeParse
 		},
 		text: {
 			contains: textContains,
@@ -283,7 +325,7 @@ app.modules['std:utils'] = function () {
 			return '';
 		else if (isObject(obj))
 			return toJson(obj);
-		return obj + '';
+		return '' + obj;
 	}
 
 	function defaultValue(type) {
@@ -403,11 +445,13 @@ app.modules['std:utils'] = function () {
 				if (dateIsZero(obj))
 					return '';
 				return formatDate(obj);
-			case "DateUrl":
+			case 'DateUrl':
 				if (dateIsZero(obj))
 					return '';
+				if (dateHasTime(obj))
+					return obj.toISOString();
 				return '' + obj.getFullYear() + pad2(obj.getMonth() + 1) + pad2(obj.getDate());
-			case "Time":
+			case 'Time':
 				if (!isDate(obj)) {
 					console.error(`Invalid Date for utils.format (${obj})`);
 					return obj;
@@ -415,13 +459,13 @@ app.modules['std:utils'] = function () {
 				if (dateIsZero(obj))
 					return '';
 				return formatTime(obj);
-			case "Period":
+			case 'Period':
 				if (!obj.format) {
 					console.error(`Invalid Period for utils.format (${obj})`);
 					return obj;
 				}
 				return obj.format('Date');
-			case "Currency":
+			case 'Currency':
 				if (!isNumber(obj)) {
 					obj = toNumber(obj);
 					//TODO:check console.error(`Invalid Currency for utils.format (${obj})`);
@@ -432,7 +476,7 @@ app.modules['std:utils'] = function () {
 				if (opts.format)
 					return formatNumber(obj, opts.format);
 				return currencyFormat(obj);
-			case "Number":
+			case 'Number':
 				if (!isNumber(obj)) {
 					obj = toNumber(obj);
 					//TODO:check console.error(`Invalid Number for utils.format (${obj})`);
@@ -514,8 +558,24 @@ app.modules['std:utils'] = function () {
 		}
 	}
 
+	function timeParse(str) {
+		str = str || '';
+		if (!str) return dateZero();
+		let seg = str.split(/[^\d]/).filter(x => x);
+		if (seg.length === 1) {
+			seg.push('0');
+		}
+		let h = Math.min(+seg[0], 23);
+		let m = Math.min(+seg[1], 59);
+		let td = new Date(0, 0, 1, h, m, 0, 0);
+		return td;
+	}
+
 	function dateParse(str) {
 		str = str || '';
+		if (utcdatRegEx.test(str)) {
+			return new Date(str);
+		}
 		if (!str) return dateZero();
 		let today = dateToday();
 		let seg = str.split(/[^\d]/).filter(x => x);
@@ -550,6 +610,11 @@ app.modules['std:utils'] = function () {
 	function dateIsZero(d1) {
 		if (!isDate(d1)) return false;
 		return dateEqual(d1, dateZero());
+	}
+
+	function dateHasTime(d1) {
+		if (!isDate(d1)) return false;
+		return d1.getUTCHours() !== 0 || d1.getUTCMinutes() !== 0 && d1.getUTCSeconds() !== 0;
 	}
 
 	function endOfMonth(dt) {
@@ -591,9 +656,11 @@ app.modules['std:utils'] = function () {
 				let du = 1000 * 60 * 60 * 24;
 				return Math.floor((d2 - d1) / du);
 			case "year":
-			case 'year':
 				var dd = new Date(d1.getFullYear(), d2.getMonth(), d2.getDate(), d2.getHours(), d2.getMinutes(), d2.getSeconds(), d2.getMilliseconds());
-				return d2.getFullYear() - d1.getFullYear() + (dd < d1 ? (d2 > d1 ? -1 : 0) : (d2 < d1 ? 1 : 0));
+				let dy = dd < d1 ?
+					d2 > d1 ? -1 : 0 :
+					d2 < d1 ? 1  : 0;
+				return d2.getFullYear() - d1.getFullYear() + dy;
 		}
 		throw new Error('Invalid unit value for utils.date.diff');
 	}
@@ -963,7 +1030,7 @@ app.modules['std:url'] = function () {
 
 // Copyright © 2015-2019 Alex Kukhtin. All rights reserved.
 
-// 20190223-7441
+/*20191101-7575*/
 // services/period.js
 
 app.modules['std:period'] = function () {
@@ -1067,7 +1134,7 @@ app.modules['std:period'] = function () {
 			}
 		}
 		if (showCustom)
-			return 'Довільно';
+			return locale.$CustomPeriod;
 		let from = this.From;
 		let to = this.To;
 		return utils.format(from, 'Date') + ' - ' + (utils.format(to, 'Date') || '???');
@@ -1092,6 +1159,9 @@ app.modules['std:period'] = function () {
 		return this.normalize();
 	};
 
+	TPeriod.prototype.toJson = function () {
+		return JSON.stringify(this);
+	};
 
 	
 	return {
@@ -1660,8 +1730,8 @@ app.modules['std:mask'] = function () {
 
 // Copyright © 2015-2019 Alex Kukhtin. All rights reserved.
 
-// 20190226-7444
-/* services/http.js */
+// 20191028-7574
+/* services/html.js */
 
 app.modules['std:html'] = function () {
 
@@ -1671,6 +1741,7 @@ app.modules['std:html'] = function () {
 		getColumnsWidth,
 		getRowHeight,
 		downloadBlob,
+		downloadUrl,
 		printDirect,
 		removePrintFrame,
 		updateDocTitle
@@ -1694,6 +1765,16 @@ app.modules['std:html'] = function () {
 		}
 	}
 
+	function downloadUrl(url) {
+		let link = document.createElement('a');
+		link.style = "display:none";
+		document.body.appendChild(link);
+		link.href = url;
+		link.setAttribute('download', '');
+		link.click();
+		document.body.removeChild(link);
+	}
+
 	function downloadBlob(blob, fileName, format) {
 		let objUrl = URL.createObjectURL(blob);
 		let link = document.createElement('a');
@@ -1714,6 +1795,11 @@ app.modules['std:html'] = function () {
 
 	function printDirect(url) {
 
+
+		if (window.cefHost || navigator.userAgent.toLowerCase().indexOf('firefox') > -1) {
+			window.open(url);
+			return;
+		}
 		removePrintFrame();
 		let frame = document.createElement("iframe");
 		document.body.classList.add('waiting');
@@ -1722,16 +1808,22 @@ app.modules['std:html'] = function () {
 		document.body.appendChild(frame);
 		if (document.activeElement)
 			document.activeElement.blur();
+		//let emb = document.createElement('embed');
+		//emb.setAttribute('src', url);
+		//frame.appendChild(emb);
 		frame.setAttribute('src', url);
 
 
 		frame.onload = function (ev) {
 			let cw = frame.contentWindow;
-			let finp = cw.document.createElement('input');
-			finp.setAttribute("id", "dummy-focus");
-			finp.cssText = "width:0;height:0;border:none;position:absolute;left:-10000,top:-100000";
-			cw.document.body.appendChild(finp);
-			finp.focus();
+			if (cw.document.body) {
+				let finp = cw.document.createElement('input');
+				finp.setAttribute("id", "dummy-focus");
+				finp.cssText = "width:0;height:0;border:none;position:absolute;left:-10000,top:-100000";
+				cw.document.body.appendChild(finp);
+				finp.focus();
+				cw.document.body.removeChild(finp);
+			}
 			document.body.classList.remove('waiting');
 			cw.print();
 		};
@@ -1756,7 +1848,7 @@ app.modules['std:html'] = function () {
 
 // Copyright © 2015-2019 Alex Kukhtin. All rights reserved.
 
-// 20190221-7439
+// 20190808-7517
 /* services/http.js */
 
 app.modules['std:http'] = function () {
@@ -1809,6 +1901,11 @@ app.modules['std:http'] = function () {
 					}
 					else
 						reject(xhr.responseText || xhr.statusText);
+				} else if (xhr.status === 473 /*non standard */) {
+					if (xhr.statusText === 'Unauthorized') {
+						// go to login page
+						window.location.assign('/');
+					}
 				}
 				else
 					reject(xhr.statusText);
@@ -1864,6 +1961,7 @@ app.modules['std:http'] = function () {
 			fc.__vue__.$destroy();
 		}
 		return new Promise(function (resolve, reject) {
+			eventBus.$emit('beginLoad');
 			doRequest('GET', url)
 				.then(function (html) {
 					if (html.startsWith('<!DOCTYPE')) {
@@ -1886,7 +1984,10 @@ app.modules['std:http'] = function () {
 						let s = rdoc.scripts[i];
 						if (s.type === 'text/javascript') {
 							let newScript = document.createElement("script");
-							newScript.text = s.text;
+							if (s.src)
+								newScript.src = s.src;
+							else
+								newScript.text = s.text;
 							document.body.appendChild(newScript).parentNode.removeChild(newScript);
 						}
 					}
@@ -1903,10 +2004,11 @@ app.modules['std:http'] = function () {
 						}
 					}
 					resolve(true);
+					eventBus.$emit('endLoad');
 				})
 				.catch(function (error) {
-					alert(error);
-					resolve(false);
+					reject(error);
+					eventBus.$emit('endLoad');
 				});
 		});
 	}
@@ -1963,9 +2065,9 @@ app.modules['std:routing'] = function () {
 	}
 };
 
-// Copyright © 2015-2018 Alex Kukhtin. All rights reserved.
+// Copyright © 2015-2019 Alex Kukhtin. All rights reserved.
 
-/*20180705-7241*/
+/*20191122-7587*/
 /*validators.js*/
 
 app.modules['std:validators'] = function () {
@@ -1986,15 +2088,21 @@ app.modules['std:validators'] = function () {
 	};
 
 	function validateStd(rule, val) {
-		switch (rule) {
+		switch (rule.valid) {
 			case 'notBlank':
 				return utils.notBlank(val);
 			case "email":
-				return validEmail(val);
+				return val === '' || EMAIL_REGEXP.test(val);
 			case "url":
-				return validUrl(val);
+				return val === '' || URL_REGEXP.test(val);
 			case "isTrue":
 				return val === true;
+			case "regExp":
+				if (!(rule.regExp instanceof RegExp)) {
+					console.error('rule.regExp is undefined or is not an regular expression');
+					return false;
+				}
+				return val === '' || rule.regExp.test(val);
 		}
 		console.error(`invalid std rule: '${rule}'`);
 		return true;
@@ -2036,7 +2144,7 @@ app.modules['std:validators'] = function () {
 				if (!rule.applyIf(item, val)) return;
 			}
 			if (utils.isString(rule)) {
-				if (!validateStd('notBlank', val))
+				if (!validateStd({ valid: 'notBlank' }, val))
 					retval.push({ msg: rule, severity: ERROR });
 			} else if (utils.isFunction(rule)) {
 				let vr = rule(item, val);
@@ -2046,7 +2154,7 @@ app.modules['std:validators'] = function () {
 					retval.push({ msg: vr.msg, severity: vr.severity || sev });
 				}
 			} else if (utils.isString(rule.valid)) {
-				if (!validateStd(rule.valid, val))
+				if (!validateStd(rule, val))
 					retval.push({ msg: rule.msg, severity: sev });
 			} else if (utils.isFunction(rule.valid)) {
 				if (rule.async) {
@@ -2127,22 +2235,13 @@ app.modules['std:validators'] = function () {
 		let err = validateImpl(arr, item, val, du);
 		return err; // always array. may be defer
 	}
-
-
-	function validEmail(addr) {
-		return addr === '' || EMAIL_REGEXP.test(addr);
-	}
-
-	function validUrl(url) {
-		return url === '' || URL_REGEXP.test(url);
-	}
 };
 
 
 
 /* Copyright © 2015-2019 Alex Kukhtin. All rights reserved.*/
 
-// 20190412-7483
+/*20181101-7576*/
 // services/datamodel.js
 
 (function () {
@@ -2161,6 +2260,9 @@ app.modules['std:validators'] = function () {
 	const FLAG_VIEW = 1;
 	const FLAG_EDIT = 2;
 	const FLAG_DELETE = 4;
+	const FLAG_APPLY = 8;
+	const FLAG_UNAPPLY = 16;
+
 	const DEFAULT_PAGE_SIZE = 20;
 
 	const platform = require('std:platform');
@@ -2209,9 +2311,12 @@ app.modules['std:validators'] = function () {
 	function ensureType(type, val) {
 		if (!utils.isDefined(val))
 			val = utils.defaultValue(type);
-		if (type === Number) {
+		if (type === Number)
 			return utils.toNumber(val);
-		}
+		else if (type === String)
+			return utils.toString(val);
+		else if (type === Date && !utils.isDate(val))
+			return utils.date.parse('' + val);
 		return val;
 	}
 
@@ -2275,8 +2380,14 @@ app.modules['std:validators'] = function () {
 				let eventWasFired = false;
 				let skipDirty = prop.startsWith('$$');
 				let ctor = this._meta_.props[prop];
-				if (ctor.type) ctor = ctor.type;
-				val = ensureType(ctor, val);
+				let isjson = false;
+				if (ctor.type) {
+					isjson = !!ctor.json;
+					ctor = ctor.type;
+				}
+				if (!isjson) {
+					val = ensureType(ctor, val);
+				}
 				if (val === this._src_[prop])
 					return;
 				let oldVal = this._src_[prop];
@@ -2294,7 +2405,7 @@ app.modules['std:validators'] = function () {
 					this._src_[prop] = val;
 				}
 				if (!skipDirty) // skip special properties
-					this._root_.$setDirty(true, this._path_);
+					this._root_.$setDirty(true, this._path_, prop);
 				if (this._lockEvents_) return; // events locked
 				if (eventWasFired) return; // was fired
 				let eventName = (this._path_ || 'Root') + '.' + prop + '.change';
@@ -2402,6 +2513,18 @@ app.modules['std:validators'] = function () {
 		if (elem._meta_.$items)
 			elem.$expanded = false; // tree elem
 
+		elem.$lockEvents = function () {
+			this._lockEvents_ += 1;
+		};
+
+		elem.$unlockEvents = function () {
+			this._lockEvents_ -= 1;
+		};
+
+		defHiddenGet(elem, '$eventsLocked', function () {
+			return this._lockEvents_ > 0;
+		});
+
 		defPropertyGet(elem, '$valid', function () {
 			if (this._root_._needValidate_)
 				this._root_._validateAll_();
@@ -2500,13 +2623,22 @@ app.modules['std:validators'] = function () {
 				platform.defer(() => {
 					let isRequery = elem.$vm.__isModalRequery();
 					elem.$emit('Model.load', elem, _lastCaller, isRequery);
-					elem._root_.$setDirty(false);
+					elem._root_.$setDirty(elem._root_.$isCopy ? true : false);
 				});
+			};
+			elem._fireUnload_ = () => {
+				elem.$emit('Model.unload', elem);
 			};
 			defHiddenGet(elem, '$readOnly', isReadOnly);
 			defHiddenGet(elem, '$stateReadOnly', isStateReadOnly);
 			defHiddenGet(elem, '$isCopy', isModelIsCopy);
+			defHiddenGet(elem, '$mainObject', mainObject);
+
 			elem._seal_ = seal;
+
+			elem._fireGlobalPeriodChanged_ = (period) => {
+				elem.$emit('GlobalPeriod.change', elem, period);
+			};
 		}
 		if (startTime) {
 			logtime('create root time:', startTime, false);
@@ -2559,6 +2691,14 @@ app.modules['std:validators'] = function () {
 		return false;
 	}
 
+	function mainObject() {
+		if ('$main' in this._meta_) {
+			let mainProp = this._meta_.$main;
+			return this[mainProp];
+		}
+		return null;
+	}
+
 	function isModelIsCopy() {
 		if ('__modelInfo' in this) {
 			let mi = this.__modelInfo;
@@ -2597,7 +2737,7 @@ app.modules['std:validators'] = function () {
 			return arr;
 		for (let i = 0; i < source.length; i++) {
 			arr[i] = new arr._elem_(source[i], dotPath, arr);
-			arr[i].$checked = false;
+			arr[i].__checked = false;
 		}
 		return arr;
 	}
@@ -2616,7 +2756,7 @@ app.modules['std:validators'] = function () {
 
 		arr.$new = function (src) {
 			let newElem = new this._elem_(src || null, this._path_ + '[]', this);
-			newElem.$checked = false;
+			newElem.__checked = false;
 			return newElem;
 		};
 
@@ -2680,6 +2820,12 @@ app.modules['std:validators'] = function () {
 		arr.$load = function () {
 			if (!this.$isLazy()) return;
 			platform.defer(() => this.$loadLazy());
+		};
+
+		arr.$resetLazy = function () {
+			this.$empty();
+			if (this.$loaded)
+				this.$loaded = false;
 		};
 
 		arr.$loadLazy = function () {
@@ -2876,6 +3022,11 @@ app.modules['std:validators'] = function () {
 			return null;
 		});
 
+		defHiddenGet(obj, "$ready", function () {
+			if (!this.$vm) return true;
+			return !this.$vm.$isLoading;
+		});
+
 		obj.$isValid = function (props) {
 			return true;
 		};
@@ -2943,6 +3094,25 @@ app.modules['std:validators'] = function () {
 				return this[itmsName];
 			});
 		}
+		if (meta.$permissions) {
+			defHiddenGet(obj.prototype, "$permissions", function () {
+				let permName = this._meta_.$permissions;
+				if (!permName) return undefined;
+				var perm = this[permName];
+				if (this.$isNew && perm === 0) {
+					let mi = this.$ModelInfo;
+					if (mi && utils.isDefined(mi.Permissions))
+						perm = mi.Permissions;
+				}
+				return Object.freeze({
+					canView: !!(perm & FLAG_VIEW),
+					canEdit: !!(perm & FLAG_EDIT),
+					canDelete: !!(perm & FLAG_DELETE),
+					canApply: !!(perm & FLAG_APPLY),
+					canUnapply: !!(perm & FLAG_UNAPPLY)
+				});
+			});
+		}
 	}
 
 	function emitSelect(arr, item) {
@@ -2974,6 +3144,19 @@ app.modules['std:validators'] = function () {
 				}
 			}
 		};
+		Object.defineProperty(elem.prototype, '$checked', {
+			enumerable: true,
+			configurable: true, /* needed */
+			get() {
+				return this.__checked;
+			},
+			set(val) {
+				this.__checked = val;
+				let arr = this.$parent;
+				let checkEvent = arr._path_ + '[].check';
+				arr._root_.$emit(checkEvent, arr/*array*/, this);
+			}
+		});
 	}
 
 	function emit(event, ...arr) {
@@ -3005,7 +3188,7 @@ app.modules['std:validators'] = function () {
 			return null;
 		}
 		if (name in tml.delegates) {
-			return tml.delegates[name];
+			return tml.delegates[name].bind(this.$root);
 		}
 		console.error(`Delegate "${name}" not found in the template`);
 	}
@@ -3242,14 +3425,15 @@ app.modules['std:validators'] = function () {
 		//console.dir(allerrs);
 	}
 
-	function setDirty(val, path) {
+	function setDirty(val, path, prop) {
 		if (this.$root.$readOnly)
 			return;
 		if (path && path.toLowerCase().startsWith('query'))
 			return;
 		if (isNoDirty(this.$root))
 			return;
-		// TODO: template.options.skipDirty
+		if (path && prop && isSkipDirty(this.$root, `${path}.${prop}`))
+			return;
 		this.$dirty = val;
 	}
 
@@ -3285,6 +3469,15 @@ app.modules['std:validators'] = function () {
 		let t = root.$template;
 		let opts = t && t.options;
 		return opts && opts.noDirty;
+	}
+
+	function isSkipDirty(root, path) {
+		let t = root.$template;
+		const opts = t && t.options;
+		if (!opts) return false;
+		const sd = opts.skipDirty;
+		if (!sd || !utils.isArray(sd)) return false;
+		return sd.indexOf(path) !== -1;
 	}
 
 	function saveSelections() {
@@ -3365,6 +3558,7 @@ app.modules['std:validators'] = function () {
 			this._root_._needValidate_ = true;
 			this._lockEvents_ -= 1;
 		}
+		if (this.$parent._lockEvents_) return this; // may be custom lock
 		let newId = this.$id__;
 		let fireChange = false;
 		if (utils.isDefined(newId) && utils.isDefined(oldId))
@@ -3374,6 +3568,7 @@ app.modules['std:validators'] = function () {
 			let eventName = this._path_ + '.change';
 			this._root_.$emit(eventName, this.$parent, this, this, propFromPath(this._path_));
 		}
+		return this;
 	}
 
 	function implementRoot(root, template, ctors) {
@@ -3423,12 +3618,19 @@ app.modules['std:validators'] = function () {
 		return obj;
 	}
 
-	function setRootModelInfo(item, data) {
+	function setRootModelInfo(elem, data) {
 		if (!data.$ModelInfo) return;
-		let elem = item;
 		for (let p in data.$ModelInfo) {
 			if (!elem) elem = this[p];
 			elem.$ModelInfo = checkPeriod(data.$ModelInfo[p]);
+
+			elem.$ModelInfo.$setFilter = function (prop, val) {
+				if (period.isPeriod(val))
+					this.Filter[prop].assign(val);
+				else
+					this.Filter[prop] = val;
+			};
+
 			return; // first element only
 		}
 	}
@@ -3588,9 +3790,9 @@ app.modules['std:popup'] = function () {
 app.components['std:store'] = {
 };
 
-// Copyright © 2015-2018 Alex Kukhtin. All rights reserved.
+// Copyright © 2015-2019 Alex Kukhtin. All rights reserved.
 
-// 20181117-7359
+// 20190902-7550
 // components/collectionview.js
 
 /*
@@ -3604,6 +3806,7 @@ TODO:
 	const log = require('std:log', true);
 	const utils = require('std:utils');
 	const period = require('std:period');
+	const eventBus = require('std:eventBus');
 
 	const DEFAULT_PAGE_SIZE = 20;
 
@@ -3660,6 +3863,8 @@ TODO:
 				}
 				else if (utils.isObjectExact(iv)) 
 					iv.Id = q[x];
+				else if (utils.isNumber(iv))
+					filter[x] = +q[x];
 				else {
 					filter[x] = q[x];
 				}
@@ -3933,6 +4138,13 @@ TODO:
 				this.$nextTick(() => {
 					this.lockChange = false;
 				});
+			},
+			__setFilter(props) {
+				if (this.ItemsSource !== props.source) return;
+				if (period.isPeriod(props.value))
+					this.filter[props.prop].assign(props.value);
+				else
+					this.filter[props.prop] = props.value;
 			}
 		},
 		created() {
@@ -3946,9 +4158,13 @@ TODO:
 			});
 			// from datagrid, etc
 			this.$on('sort', this.doSort);
+			eventBus.$on('setFilter', this.__setFilter);
 		},
 		updated() {
 			this.updateFilter();
+		},
+		beforeDestroy() {
+			eventBus.$off('setFilter', this.__setFilter);
 		}
 	});
 
@@ -4062,6 +4278,13 @@ TODO:
 				if (!nq.order) nq.dir = undefined;
 				//console.warn('filter changed');
 				this.commit(nq);
+			},
+			__setFilter(props) {
+				if (this.ItemsSource !== props.source) return;
+				if (period.isPeriod(props.value))
+					this.filter[props.prop].assign(props.value);
+				else
+					this.Filter[props.prop] = props.value;
 			}
 		},
 		created() {
@@ -4082,6 +4305,11 @@ TODO:
 			});
 
 			this.$on('sort', this.doSort);
+
+			eventBus.$on('setFilter', this.__setFilter);
+		},
+		beforeDestroy() {
+			eventBus.$off('setFilter', this.__setFilter);
 		}
 	});
 
@@ -4217,7 +4445,197 @@ Vue.component('a2-pager', {
 
 // Copyright © 2015-2019 Alex Kukhtin. All rights reserved.
 
-// 20190403-7477
+// 20190808-7508
+/*components/include.js*/
+
+(function () {
+
+	const http = require('std:http');
+	const urlTools = require('std:url');
+	const eventBus = require('std:eventBus');
+
+	function _destroyElement(el) {
+		let fc = el.firstElementChild;
+		if (!fc) return;
+		let vue = fc.__vue__;
+		// Maybe collectionView created the wrapper!
+		if (vue && !vue.$marker)
+			vue = vue.$parent;
+		if (vue && vue.$marker()) {
+			vue.$destroy();
+		}
+	}
+
+	Vue.component('include', {
+		template: '<div :class="implClass"></div>',
+		props: {
+			src: String,
+			cssClass: String,
+			needReload: Boolean,
+			insideDialog: Boolean,
+			done: Function
+		},
+		data() {
+			return {
+				loading: true,
+				currentUrl: '',
+				_needReload: true
+			};
+		},
+		methods: {
+			loaded(ok) {
+				this.loading = false;
+				if (this.insideDialog)
+					eventBus.$emit('modalCreated', this);
+				if (this.done)
+					this.done();
+			},
+			requery() {
+				if (this.currentUrl) {
+					// Do not set loading. Avoid blinking
+					this.__destroy();
+					http.load(this.currentUrl, this.$el)
+						.then(this.loaded)
+						.catch(this.error);
+				}
+			},
+			__destroy() {
+				//console.warn('include has been destroyed');
+				_destroyElement(this.$el);
+			},
+			modalRequery() {
+				if (!this.insideDialog) return;
+				setTimeout(() => {
+					this.requery();
+				}, 1);
+			},
+			error(msg) {
+				msg = msg || '';
+				if (this.insideDialog)
+					eventBus.$emit('modalClose', false);
+				if (msg.indexOf('UI:') === 0) {
+					let dlgData = {
+						promise: null, data: {
+							message: msg.substring(3).replace('\\n', '\n'),
+							style: 'alert'
+						}
+					};
+					eventBus.$emit('confirm', dlgData);
+				} else
+					alert(msg);
+			}
+		},
+		computed: {
+			implClass() {
+				return `include ${this.cssClass || ''} ${this.loading ? 'loading' : ''}`;
+			}
+		},
+		mounted() {
+			//console.warn('include has been mounted');
+			if (this.src) {
+				this.currentUrl = this.src;
+				http.load(this.src, this.$el)
+					.then(this.loaded)
+					.catch(this.error);
+			}
+		},
+		destroyed() {
+			this.__destroy(); // and for dialogs too
+		},
+		watch: {
+			src: function (newUrl, oldUrl) {
+				if (this.insideDialog) {
+					// Dialog. No need to reload always.
+					this.currentUrl = newUrl;
+				}
+				else if (newUrl.split('?')[0] === oldUrl.split('?')[0]) {
+					// Only the search has changed. No need to reload.
+					this.currentUrl = newUrl;
+				}
+				else if (urlTools.idChangedOnly(newUrl, oldUrl)) {
+					// Id has changed after save. No need to reload.
+					this.currentUrl = newUrl;
+				} else if (urlTools.idOrCopyChanged(newUrl, oldUrl)) {
+					// Id has changed after save. No need to reload.
+					this.currentUrl = newUrl;
+				}
+				else {
+					this.loading = true; // hides the current view
+					this.currentUrl = newUrl;
+					this.__destroy();
+					http.load(newUrl, this.$el)
+						.then(this.loaded)
+						.catch(this.error);
+				}
+			},
+			needReload(val) {
+				// works like a trigger
+				if (val) this.requery();
+			}
+		}
+	});
+
+
+	Vue.component('a2-include', {
+		template: '<div class="a2-include"></div>',
+		props: {
+			source: String,
+			arg: undefined
+		},
+		data() {
+			return {
+				needLoad: 0
+			};
+		},
+		methods: {
+			__destroy() {
+				//console.warn('include has been destroyed');
+				_destroyElement(this.$el);
+			},
+			loaded() {
+			},
+			makeUrl() {
+				let arg = this.arg || '0';
+				return urlTools.combine('_page', this.source, arg);
+			},
+			load() {
+				let url = this.makeUrl();
+				this.__destroy();
+				http.load(url, this.$el)
+					.then(this.loaded)
+					.catch(this.error);
+			}
+		},
+		watch: {
+			source(newVal, oldVal) {
+				//console.warn(`source changed ${newVal}, ${oldVal}`);
+				this.needLoad += 1;
+			},
+			arg(newVal, oldVal) {
+				//console.warn(`arg changed ${newVal}, ${oldVal}`);
+				this.needLoad += 1;
+			},
+			needLoad() {
+				//console.warn(`load iteration: ${this.needLoad}`);
+				this.load();
+			}
+		},
+		mounted() {
+			if (this.source) {
+				this.currentUrl = this.makeUrl(this.source);
+				http.load(this.currentUrl, this.$el)
+					.then(this.loaded)
+					.catch(this.error);
+			}
+		},
+		destroyed() {
+			this.__destroy(); // and for dialogs too
+		}
+	});
+})();
+// Copyright © 2015-2019 Alex Kukhtin. All rights reserved.
+
+/*20181009-7565*/
 // controllers/base.js
 
 (function () {
@@ -4237,7 +4655,7 @@ Vue.component('a2-pager', {
 	const htmlTools = require('std:html', true /*no error*/);
 
 	const store = component('std:store');
-	const documentTitle = component("std:doctitle", true /*no error*/);
+	const documentTitle = component('std:doctitle', true /*no error*/);
 
 	let __updateStartTime = 0;
 	let __createStartTime = 0;
@@ -4263,6 +4681,24 @@ Vue.component('a2-pager', {
 		return ra.length ? ra : null;
 	}
 
+	function isPermissionsDisabled(opts, arg) {
+		if (opts && opts.checkPermission) {
+			if (utils.isObjectExact(arg)) {
+				if (arg.$permissions) {
+					let perm = arg.$permissions;
+					let prop = opts.checkPermission;
+					if (prop in perm) {
+						if (!perm[prop])
+							return true;
+					} else {
+						console.error(`invalid permssion name: '${prop}'`);
+					}
+				}
+			}
+		}
+		return false;
+	}
+
 	const base = Vue.extend({
 		// inDialog: Boolean (in derived class)
 		// pageTitle: String (in derived class)
@@ -4276,7 +4712,8 @@ Vue.component('a2-pager', {
 				__baseUrl__: '',
 				__baseQuery__: {},
 				__requestsCount__: 0,
-				__lockQuery__: true
+				__lockQuery__: true,
+				__testId__: null
 			};
 		},
 
@@ -4325,23 +4762,13 @@ Vue.component('a2-pager', {
 			$exec(cmd, arg, confirm, opts) {
 				if (this.$isReadOnly(opts)) return;
 				if (this.$isLoading) return;
+
+				if (isPermissionsDisabled(opts, arg)) {
+					this.$alert(locale.$PermissionDenied);
+					return;
+				}
 				const root = this.$data;
 				return root._exec_(cmd, arg, confirm, opts);
-                /*
-                const doExec = () => {
-                    let root = this.$data;
-                    if (!confirm)
-                        root._exec_(cmd, arg, confirm, opts);
-                    else
-                        this.$confirm(confirm).then(() => root._exec_(cmd, arg));
-                }
-
-                if (opts && opts.saveRequired && this.$isDirty) {
-                    this.$save().then(() => doExec());
-                } else {
-                    doExec();
-                }
-                */
 			},
 
 			$toJson(data) {
@@ -4596,8 +5023,9 @@ Vue.component('a2-pager', {
 				eventBus.$emit('closeAllPopups');
 				let urlToNavigate = urltools.createUrlForNavigate(url, data);
 				if (newWindow === true) {
-					let nwin = window.open(urlToNavigate, "_blank");
-					nwin.$$token = { token: this.__currentToken__, update: update };
+                    let nwin = window.open(urlToNavigate, "_blank");
+                    if (nwin)
+                        nwin.$$token = { token: this.__currentToken__, update: update };
 				}
 				else
 					this.$store.commit('navigate', { url: urlToNavigate });
@@ -4605,8 +5033,9 @@ Vue.component('a2-pager', {
 
 			$navigateSimple(url, newWindow, update) {
 				if (newWindow === true) {
-					let nwin = window.open(url, "_blank");
-					nwin.$$token = { token: this.__currentToken__, update: update };
+                    let nwin = window.open(url, "_blank");
+                    if (nwin)
+                        nwin.$$token = { token: this.__currentToken__, update: update };
 				}
 				else
 					this.$store.commit('navigate', { url: url });
@@ -4614,7 +5043,7 @@ Vue.component('a2-pager', {
 
 			$navigateExternal(url, newWindow) {
 				if (newWindow === true) {
-					let nwin = window.open(url, "_blank");
+					window.open(url, "_blank");
 				}
 				else
 					window.location.assign(url);
@@ -4626,6 +5055,24 @@ Vue.component('a2-pager', {
 				window.location = root + url;
 			},
 
+			$file(url, arg, opts) {
+				const root = window.$$rootUrl;
+				let id = arg;
+				if (arg && utils.isObject(arg))
+					id = utils.getStringId(arg);
+				let fileUrl = urltools.combine(root, '_file', url, id);
+				switch ((opts || {}).action) {
+					case 'download':
+						htmlTools.downloadUrl(fileUrl + '?export=1');
+						break;
+					case 'print':
+						htmlTools.printDirect(fileUrl);
+						break;
+					default:
+						window.open(fileUrl, '_blank');
+				}
+			},
+
 			$attachment(url, arg, opts) {
 				const root = window.$$rootUrl;
 				let cmd = opts && opts.export ? 'export' : 'show';
@@ -4633,7 +5080,7 @@ Vue.component('a2-pager', {
 				if (arg && utils.isObject(arg))
 					id = utils.getStringId(arg);
 				let attUrl = urltools.combine(root, 'attachment', cmd, id);
-				let qry = { base: url};
+				let qry = { base: url };
 				attUrl = attUrl + urltools.makeQueryString(qry);
 				if (opts && opts.newWindow)
 					window.open(attUrl, '_blank');
@@ -4662,9 +5109,14 @@ Vue.component('a2-pager', {
 				});
 			},
 
-			$dbRemove(elem, confirm) {
+			$dbRemove(elem, confirm, opts) {
 				if (!elem)
 					return;
+
+				if (isPermissionsDisabled(opts, elem)) {
+					this.$alert(locale.$PermissionDenied);
+					return;
+				}
 				if (this.$isLoading) return;
 				let id = elem.$id;
 				let lazy = elem.$parent.$isLazy ? elem.$parent.$isLazy() : false;
@@ -4700,12 +5152,12 @@ Vue.component('a2-pager', {
 				}
 			},
 
-			$dbRemoveSelected(arr, confirm) {
+			$dbRemoveSelected(arr, confirm, opts) {
 				if (this.$isLoading) return;
 				let sel = arr.$selected;
 				if (!sel)
 					return;
-				this.$dbRemove(sel, confirm);
+				this.$dbRemove(sel, confirm, opts);
 			},
 
 			$openSelectedFrame(url, arr) {
@@ -4749,6 +5201,7 @@ Vue.component('a2-pager', {
 			},
 
 			$confirm(prms) {
+				// TODO: tools
 				if (utils.isString(prms))
 					prms = { message: prms };
 				prms.style = prms.style || 'confirm';
@@ -4765,6 +5218,12 @@ Vue.component('a2-pager', {
 
 			$alert(msg, title, list) {
 				// TODO: tools
+				if (utils.isObject(msg) && !title && !list) {
+					let prms = msg;
+					msg = prms.message || prms.msg;
+					title = prms.title;
+					list = prms.list;
+				}
 				let dlgData = {
 					promise: null, data: {
 						message: msg, title: title, style: 'alert', list: list
@@ -4827,6 +5286,13 @@ Vue.component('a2-pager', {
 
 				function doDialog() {
 					// result always is raw data
+					if (isPermissionsDisabled(opts, arg)) {
+						that.$alert(locale.$PermissionDenied);
+						return;
+					}
+					if (utils.isFunction(query)) {
+						query = query();
+					}
 					switch (command) {
 						case 'new':
 							if (argIsNotAnArray()) return;
@@ -4887,7 +5353,8 @@ Vue.component('a2-pager', {
 					return;
 				}
 
-				if (opts && opts.saveRequired && this.$isDirty) {
+				let mo = this.$data.$mainObject;
+				if (opts && opts.saveRequired && (this.$isDirty || mo && mo.$isNew)) {
 					let dlgResult = null;
 					this.$save().then(() => { dlgResult = doDialog(); });
 					return dlgResult;
@@ -4895,13 +5362,17 @@ Vue.component('a2-pager', {
 				return doDialog();
 			},
 
-			$export() {
+			$export(arg, url, dat) {
 				if (this.$isLoading) return;
+
+				let id = arg || '0';
+				if (arg && utils.isObject(arg))
+					id = utils.getStringId(arg);
 				const self = this;
 				const root = window.$$rootUrl;
-				let url = self.$baseUrl;
-				url = url.replace('/_page/', '/_export/');
-				window.location = root + url;
+				let newurl = url ? urltools.combine('/_export', url, id) : self.$baseUrl.replace('/_page/', '/_export/');
+				newurl = urltools.combine(root, newurl) + urltools.makeQueryString(dat);
+				window.location = newurl; // to display errors
 			},
 
 			$exportTo(format, fileName) {
@@ -5002,6 +5473,10 @@ Vue.component('a2-pager', {
 
 			$modalClose(result) {
 				eventBus.$emit('modalClose', result);
+			},
+
+			$setFilter(obj, prop, val) {
+				eventBus.$emit('setFilter', { source: obj, prop: prop, value: val });
 			},
 
 			$modalSelect(array, opts) {
@@ -5211,6 +5686,33 @@ Vue.component('a2-pager', {
 				return '';
 			},
 
+			$getErrors(severity) {
+				let errs = this.$data.$forceValidate();
+				if (!errs || !errs.length)
+					return null;
+
+				if (severity && !utils.isArray(severity))
+					severity = [severity];
+
+				function isInclude(sev) {
+					if (!severity)
+						return true; // include
+					if (severity.indexOf(sev) !== -1)
+						return true;
+					return false;
+				}
+
+				let result = [];
+				for (let x of errs) {
+					for (let ix = 0; ix < x.e.length; ix++) {
+						let y = x.e[ix];
+						if (isInclude(y.severity))
+							result.push({ path: x, msg: y.msg, severity: y.severity, index: ix });
+					}
+				}
+				return result.length ? result : null;
+			},
+
 			__beginRequest() {
 				this.$data.__requestsCount__ += 1;
 			},
@@ -5269,7 +5771,8 @@ Vue.component('a2-pager', {
 					$reload: this.$reload,
 					$notifyOwner: this.$notifyOwner,
 					$navigate: this.$navigate,
-					$defer: platform.defer
+					$defer: platform.defer,
+					$setFilter: this.$setFilter
 				};
 				Object.defineProperty(ctrl, "$isDirty", {
 					enumerable: true,
@@ -5313,6 +5816,22 @@ Vue.component('a2-pager', {
 				let arg = { url: this.$baseUrl, result: false };
 				eventBus.$emit('isModalRequery', arg);
 				return arg.result;
+			},
+			__invoke__test__(args) {
+				args = args || {};
+				if (args.target !== 'controller')
+					return;
+				if (args.testId !== this.__testId__)
+					return;
+				const root = this.$data;
+				switch (args.action) {
+					case 'eval':
+						args.result = utils.eval(root, args.path);
+						break;
+				}
+			},
+			__global_period_changed__(period) {
+				this.$data._fireGlobalPeriodChanged_(period);
 			}
 		},
 		created() {
@@ -5324,6 +5843,8 @@ Vue.component('a2-pager', {
 			eventBus.$on('endRequest', this.__endRequest);
 			eventBus.$on('queryChange', this.__queryChange);
 			eventBus.$on('childrenSaved', this.__notified);
+			eventBus.$on('invokeTest', this.__invoke__test__);
+			eventBus.$on('globalPeriodChanged', this.__global_period_changed__);
 
 			// TODO: delete this.__queryChange
 			this.$on('localQueryChange', this.__queryChange);
@@ -5334,6 +5855,7 @@ Vue.component('a2-pager', {
 				log.time('create time:', __createStartTime, false);
 		},
 		beforeDestroy() {
+			this.$data._fireUnload_();
 		},
 		destroyed() {
 			//console.dir('base.js has been destroyed');
@@ -5342,6 +5864,8 @@ Vue.component('a2-pager', {
 			eventBus.$off('endRequest', this.__endRequest);
 			eventBus.$off('queryChange', this.__queryChange);
 			eventBus.$off('childrenSaved', this.__notified);
+			eventBus.$off('invokeTest', this.__invoke__test__);
+			eventBus.$off('globalPeriodChanged', this.__global_period_changed__);
 
 			this.$off('localQueryChange', this.__queryChange);
 			this.$off('cwChange', this.__cwChange);
@@ -5352,6 +5876,11 @@ Vue.component('a2-pager', {
 		},
 		beforeCreate() {
 			__createStartTime = performance.now();
+		},
+		mounted() {
+			let testId = this.$el.getAttribute('test-id');
+			if (testId)
+				this.__testId__ = testId;
 		},
 		updated() {
 			if (log)

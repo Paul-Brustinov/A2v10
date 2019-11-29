@@ -1,18 +1,16 @@
-﻿// Copyright © 2015-2017 Alex Kukhtin. All rights reserved.
+﻿// Copyright © 2015-2019 Alex Kukhtin. All rights reserved.
 
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using System.Dynamic;
 using System.Text.RegularExpressions;
+using System.IO;
 
 using Newtonsoft.Json;
 
-using A2v10.Infrastructure;
-using System.IO;
-using System.Text;
-using A2v10.Data.Interfaces;
 using A2v10.Interop;
+using A2v10.Infrastructure;
 
 namespace A2v10.Request
 {
@@ -35,7 +33,7 @@ namespace A2v10.Request
 		Data,
 		Image,
 		Attachment,
-		Upload,
+		File,
 		Report,
 		Export,
 		Api
@@ -56,9 +54,16 @@ namespace A2v10.Request
 		public String path;
 		public String data;
 		public String report;
-		public String upload;
+		public String file;
 	}
 
+
+	public class RequestMerge
+	{
+		public String model;
+		public String source;
+		public String schema;
+	}
 
 	public class RequestBase
 	{
@@ -70,6 +75,8 @@ namespace A2v10.Request
 		public String template;
 		public String script;
 		public ExpandoObject parameters;
+		public RequestMerge merge;
+		public String invoke;
 
 		[JsonIgnore]
 		protected RequestModel _parent;
@@ -83,22 +90,13 @@ namespace A2v10.Request
 		internal RequestModel ParentModel => _parent;
 
 		[JsonIgnore]
-		public String Path
-		{
-			get
-			{
-				return _parent._modelPath;
-			}
-		}
+		internal Boolean HasMerge => merge != null && !String.IsNullOrEmpty(merge.model);
 
 		[JsonIgnore]
-		public String Id
-		{
-			get
-			{
-				return _parent._id;
-			}
-		}
+		public String Path => _parent._modelPath;
+
+		[JsonIgnore]
+		public String Id => _parent._id;
 
 		[JsonIgnore]
 		public String LoadProcedure
@@ -112,6 +110,17 @@ namespace A2v10.Request
 					index ? "Index" :
 					copy ? "Copy" : "Load";
 				return $"[{CurrentSchema}].[{cm}.{action}]";
+			}
+		}
+
+		[JsonIgnore]
+		public String MergeLoadProcedure
+		{
+			get
+			{
+				if (merge == null)
+					throw new InvalidOperationException("_parent is null");
+				return $"[{MergeSchema}].[{merge.model}.Load]";
 			}
 		}
 
@@ -200,6 +209,32 @@ namespace A2v10.Request
 		}
 
 		[JsonIgnore]
+		public String MergeSource
+		{
+			get
+			{
+				if (merge == null)
+					throw new InvalidOperationException("merge is null");
+				if (String.IsNullOrEmpty(merge.source))
+					return CurrentSource;
+				return merge.source;
+			}
+		}
+
+		[JsonIgnore]
+		public String MergeSchema
+		{
+			get
+			{
+				if (merge == null)
+					throw new InvalidOperationException("merge is null");
+				if (String.IsNullOrEmpty(merge.schema))
+					return CurrentSchema;
+				return merge.schema;
+			}
+		}
+
+		[JsonIgnore]
 		public String CurrentModel
 		{
 			get
@@ -211,6 +246,14 @@ namespace A2v10.Request
 				return model;
 			}
 		}
+
+		public String GetInvokeTarget()
+		{
+			if (String.IsNullOrEmpty(invoke))
+				return null;
+			return invoke;
+		}
+
 	}
 
 	public class TargetModel
@@ -218,20 +261,24 @@ namespace A2v10.Request
 		public String schema;
 		public String model;
 		public String view;
+		public String viewMobile;
 		public String template;
 	}
 
 	public abstract class RequestView : RequestBase
 	{
 		public String view;
+		public String viewMobile;
 		public String hook;
 		public Boolean indirect;
 		public String target;
 		public String targetId;
 		public TargetModel targetModel;
 
-		public String GetView()
+		public String GetView(Boolean mobile)
 		{
+			if (mobile && !String.IsNullOrEmpty(viewMobile))
+				return viewMobile;
 			return view;
 		}
 
@@ -239,9 +286,9 @@ namespace A2v10.Request
 
 		public virtual Boolean IsDialog { get { return false; } }
 
-		public String GetRelativePath(String extension)
+		public String GetRelativePath(String extension, Boolean mobile)
 		{
-			return $"~/{Path}/{GetView()}{extension}";
+			return $"~/{Path}/{GetView(mobile)}{extension}";
 		}
 
 		public IModelHandler GetHookHandler()
@@ -332,6 +379,7 @@ namespace A2v10.Request
 		public String clrType;
 		public Boolean async;
 		public String wrapper;
+		public Int32 commandTimeout;
 
 		public IList<String> xmlSchemas;
 		public Boolean validate;
@@ -424,18 +472,31 @@ namespace A2v10.Request
 		public Boolean HasPath => type == RequestReportType.stimulsoft;
 	}
 
-	public enum RequestUploadParseType
+	public enum RequestFileParseType
 	{
 		none,
 		excel,
 	}
 
-
-	public class RequestUpload : RequestBase
+	public enum RequestFileType
 	{
-		public RequestUploadParseType parse;
+		sql,
+		clr,
+		parse
+	}
+
+
+	public class RequestFile : RequestBase
+	{
+		public RequestFileType type;
+		public RequestFileParseType parse;
 		public String clrType;
 		public Boolean async;
+		public String procedure;
+		[JsonIgnore]
+		public String FileProcedureUpdate => $"[{CurrentSchema}].[{CurrentModel}.Update]";
+		[JsonIgnore]
+		public String FileProcedureLoad => $"[{CurrentSchema}].[{CurrentModel}.Load]";
 	}
 
 	public class RequestImage : RequestBase
@@ -450,7 +511,7 @@ namespace A2v10.Request
 		private String _popup;
 		private String _command;
 		private String _report;
-		private String _upload;
+		private String _file;
 		private String _data;
 		private RequestUrlKind _kind;
 
@@ -483,8 +544,8 @@ namespace A2v10.Request
 		public Dictionary<String, RequestCommand> Commands { get; set; } = new Dictionary<String, RequestCommand>(StringComparer.InvariantCultureIgnoreCase);
 		[JsonProperty("reports")]
 		public Dictionary<String, RequestReport> Reports { get; set; } = new Dictionary<String, RequestReport>(StringComparer.InvariantCultureIgnoreCase);
-		[JsonProperty("uploads")]
-		public Dictionary<String, RequestUpload> Uploads { get; set; } = new Dictionary<String, RequestUpload>(StringComparer.InvariantCultureIgnoreCase);
+		[JsonProperty("files")]
+		public Dictionary<String, RequestFile> Files { get; set; } = new Dictionary<String, RequestFile>(StringComparer.InvariantCultureIgnoreCase);
 
 
 		[JsonIgnore]
@@ -493,6 +554,8 @@ namespace A2v10.Request
 		public String ModelCommand => _command;
 		[JsonIgnore]
 		public String ModelDialog => _dialog;
+		[JsonIgnore]
+		public String ModelFile => _file;
 
 		[JsonIgnore]
 		public RequestDataAction DataAction
@@ -623,7 +686,7 @@ namespace A2v10.Request
 				p?.SetParent(this);
 			foreach (var r in Reports.Values)
 				r?.SetParent(this);
-			foreach (var u in Uploads.Values)
+			foreach (var u in Files.Values)
 				u?.SetParent(this);
 		}
 
@@ -644,11 +707,11 @@ namespace A2v10.Request
 			throw new RequestModelException($"Report '{_report}' not found");
 		}
 
-		public RequestUpload GetUpload()
+		public RequestFile GetFile()
 		{
-			if (Uploads.TryGetValue(_upload, out RequestUpload upload))
-				return upload;
-			throw new RequestModelException($"Upload '{_upload}' not found");
+			if (Files.TryGetValue(_file, out RequestFile file))
+				return file;
+			throw new RequestModelException($"File '{_file}' not found");
 		}
 
 		public static RequestModelInfo GetModelInfo(RequestUrlKind kind, String normalizedUrl)
@@ -692,8 +755,8 @@ namespace A2v10.Request
 				case RequestUrlKind.Attachment:
 					mi.action = action;
 					break;
-				case RequestUrlKind.Upload:
-					mi.upload = action;
+				case RequestUrlKind.File:
+					mi.file = action;
 					break;
 				case RequestUrlKind.Report:
 					mi.report = action;
@@ -765,7 +828,7 @@ namespace A2v10.Request
 			rm._popup = mi.popup;
 			rm._command = mi.command;
 			rm._report = mi.report;
-			rm._upload = mi.upload;
+			rm._file = mi.file;
 			rm._data = mi.data;
 			rm._modelPath = pathForLoad;
 			rm._kind = kind;
@@ -810,10 +873,10 @@ namespace A2v10.Request
 				kind = RequestUrlKind.Attachment;
 				baseUrl = baseUrl.Substring(13);
 			}
-			else if (baseUrl.StartsWith("/_upload"))
+			else if (baseUrl.StartsWith("/_file"))
 			{
-				kind = RequestUrlKind.Upload;
-				baseUrl = baseUrl.Substring(9);
+				kind = RequestUrlKind.File;
+				baseUrl = baseUrl.Substring(7);
 			}
 			else if (baseUrl.StartsWith("/_report"))
 			{

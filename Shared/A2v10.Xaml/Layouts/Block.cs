@@ -1,4 +1,4 @@
-﻿// Copyright © 2015-2017 Alex Kukhtin. All rights reserved.
+﻿// Copyright © 2015-2019 Alex Kukhtin. All rights reserved.
 
 using A2v10.Infrastructure;
 using System;
@@ -20,6 +20,7 @@ namespace A2v10.Xaml
 		public TextAlign Align { get; set; }
 		public TextColor Color { get; set; }
 		public BackgroundStyle Background { get; set; }
+		public ShadowStyle DropShadow { get; set; }
 
 		internal virtual void RenderChildren(RenderContext context)
 		{
@@ -42,7 +43,7 @@ namespace A2v10.Xaml
 		}
 		*/
 
-		internal override void RenderElement(RenderContext context, Action<TagBuilder> onRender = null)
+		public override void RenderElement(RenderContext context, Action<TagBuilder> onRender = null)
 		{
 			if (SkipRender(context))
 				return;
@@ -56,6 +57,13 @@ namespace A2v10.Xaml
 			div.AddCssClassBool(Border, "bordered-pane");
 			div.AddCssClassBool(Scroll, "scrollable-pane");
 			div.AddCssClassBool(Relative, "relative");
+
+			if (DropShadow != ShadowStyle.None)
+			{
+				div.AddCssClass("drop-shadow");
+				div.AddCssClass(DropShadow.ToString().ToLowerInvariant());
+			}
+
 			if (Background != BackgroundStyle.Default)
 				div.AddCssClass("background-" + Background.ToString().ToKebabCase());
 			//AddHackedBorder(div);
@@ -74,14 +82,14 @@ namespace A2v10.Xaml
 				c.SetParent(this);
 		}
 
-		internal override void OnSetStyles()
+		public override void OnSetStyles()
 		{
 			base.OnSetStyles();
 			foreach (var c in Children)
 				c.OnSetStyles();
 		}
 
-		internal override void OnDispose()
+		public override void OnDispose()
 		{
 			base.OnDispose();
 			foreach (var c in Children)

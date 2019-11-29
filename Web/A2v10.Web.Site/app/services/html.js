@@ -1,7 +1,7 @@
 ﻿// Copyright © 2015-2019 Alex Kukhtin. All rights reserved.
 
-// 20190226-7444
-/* services/http.js */
+// 20191028-7574
+/* services/html.js */
 
 app.modules['std:html'] = function () {
 
@@ -11,6 +11,7 @@ app.modules['std:html'] = function () {
 		getColumnsWidth,
 		getRowHeight,
 		downloadBlob,
+		downloadUrl,
 		printDirect,
 		removePrintFrame,
 		updateDocTitle
@@ -34,6 +35,16 @@ app.modules['std:html'] = function () {
 		}
 	}
 
+	function downloadUrl(url) {
+		let link = document.createElement('a');
+		link.style = "display:none";
+		document.body.appendChild(link);
+		link.href = url;
+		link.setAttribute('download', '');
+		link.click();
+		document.body.removeChild(link);
+	}
+
 	function downloadBlob(blob, fileName, format) {
 		let objUrl = URL.createObjectURL(blob);
 		let link = document.createElement('a');
@@ -54,6 +65,11 @@ app.modules['std:html'] = function () {
 
 	function printDirect(url) {
 
+
+		if (window.cefHost || navigator.userAgent.toLowerCase().indexOf('firefox') > -1) {
+			window.open(url);
+			return;
+		}
 		removePrintFrame();
 		let frame = document.createElement("iframe");
 		document.body.classList.add('waiting');
@@ -62,16 +78,22 @@ app.modules['std:html'] = function () {
 		document.body.appendChild(frame);
 		if (document.activeElement)
 			document.activeElement.blur();
+		//let emb = document.createElement('embed');
+		//emb.setAttribute('src', url);
+		//frame.appendChild(emb);
 		frame.setAttribute('src', url);
 
 
 		frame.onload = function (ev) {
 			let cw = frame.contentWindow;
-			let finp = cw.document.createElement('input');
-			finp.setAttribute("id", "dummy-focus");
-			finp.cssText = "width:0;height:0;border:none;position:absolute;left:-10000,top:-100000";
-			cw.document.body.appendChild(finp);
-			finp.focus();
+			if (cw.document.body) {
+				let finp = cw.document.createElement('input');
+				finp.setAttribute("id", "dummy-focus");
+				finp.cssText = "width:0;height:0;border:none;position:absolute;left:-10000,top:-100000";
+				cw.document.body.appendChild(finp);
+				finp.focus();
+				cw.document.body.removeChild(finp);
+			}
 			document.body.classList.remove('waiting');
 			cw.print();
 		};

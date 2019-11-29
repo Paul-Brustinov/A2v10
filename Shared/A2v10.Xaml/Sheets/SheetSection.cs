@@ -13,7 +13,7 @@ namespace A2v10.Xaml
 
 		public SheetRows Children { get; } = new SheetRows();
 
-		internal override void RenderElement(RenderContext context, Action<TagBuilder> onRender = null)
+		public override void RenderElement(RenderContext context, Action<TagBuilder> onRender = null)
 		{
 			if (SkipRender(context))
 				return;
@@ -50,7 +50,7 @@ namespace A2v10.Xaml
 				r.SetParent(this);
 		}
 
-		internal override void OnSetStyles()
+		public override void OnSetStyles()
 		{
 			base.OnSetStyles();
 			foreach (var r in Children)

@@ -8,6 +8,11 @@
 	padding-right:8px;
 	padding-top:0 !important;
 }
+
+.input-group a.selector-clear {
+	padding-right: 8px;
+}
+
 .input-group > .selector-pane {
 	//border: 1px solid @dropdown-brd-color;
 	border: 1px solid @link-hover-color;
@@ -61,8 +66,9 @@
 
 		li {
 			list-style: none;
-			padding: 3px 6px;
-			white-space: nowrap;
+			padding: 4px 6px;
+			white-space: normal;
+			cursor:pointer;
 
 			&:hover {
 				background-color: @hover-bg-color;
@@ -82,3 +88,44 @@
 	}
 }
 
+
+.control-group.selector-hyperlink {
+	.input-group {
+		border: none;
+
+		.select-text {
+			color: @link-color;
+			border-bottom: 1px dotted @link-color;
+
+			&:focus {
+				outline: none;
+			}
+		}
+	}
+
+	&.sel-large {
+		.select-text {
+			font-size: 1.2rem;
+			line-height: 2.3rem;
+		}
+	}
+}
+
+.control-group.selector-combobox {
+	.input-group {
+		.selector-combo {
+			line-height: @control-height;
+			width: 100%;
+			cursor: pointer;
+			display: flex;
+			min-height: 100%;
+
+			.select-text {
+				padding:0 4px;
+				&:focus {
+					outline: none;
+				}
+			}
+		}
+	}
+}

@@ -52,12 +52,12 @@ namespace A2v10.Xaml
 		{
 		}
 
-		internal virtual void OnDispose()
+		public virtual void OnDispose()
 		{
 
 		}
 
-		internal virtual void OnSetStyles()
+		public virtual void OnSetStyles()
 		{
 
 		}
@@ -88,7 +88,7 @@ namespace A2v10.Xaml
 		}
 
 
-		internal void MergeBoolAttribute(TagBuilder tag, RenderContext context, String propName, Boolean value)
+		public void MergeBoolAttribute(TagBuilder tag, RenderContext context, String propName, Boolean value)
 		{
 			var attrBind = GetBinding(propName);
 			// bool attrs always with ':'
@@ -100,7 +100,7 @@ namespace A2v10.Xaml
 
 		}
 
-		internal String GetBindingString(RenderContext context, String propertyName, String propValue)
+		public String GetBindingString(RenderContext context, String propertyName, String propValue)
 		{
 			String resVal = null;
 			var bindString = GetBinding(propertyName);
@@ -146,7 +146,7 @@ namespace A2v10.Xaml
 			if (iconBind != null)
 				iTag.MergeAttribute(":class", $"'ico-' + {iconBind.GetPath(context)}");
 			else if (icon != Icon.NoIcon)
-				iTag.AddCssClass("ico-" + icon.ToString().ToKebabCase());
+				iTag.AddCssClass($"ico-{icon.ToString().ToKebabCase()}");
 			iTag.AddCssClass(addClass);
 			iTag.Render(context);
 			context.RenderSpace(); // after icon - always

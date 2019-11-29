@@ -5,8 +5,9 @@
 			<Button Icon="Save" Tip="Сохранить изменения" Command="{BindCmd Save}">Сохранить 2</Button>
 			<Button Icon="SaveClose" Tip="Сохранить изменения и закрыть документ" Command="{BindCmd SaveAndClose}">Сохранить и закрыть</Button>
 			<Button Icon="Reload" Command="{BindCmd Reload}" Tip="Обновить данные">Обновить</Button>
+			<Button Icon="Bell" Command="{BindCmd Execute, CommandName=setDate, Argument={Bind Document}}" >Set Date</Button>
 			<Separator/>
-			<Button Icon="Gear" Content="Провести" Command="{BindCmd Execute, CommandName='apply', Argument={Bind Document}, SaveRequired=True, Confirm='Провести документ?'}" If="{Bind !Document.Done}"/>
+			<Button Icon="Gear" Content="Провести" Command="{BindCmd Execute, CommandName='apply', Argument={Bind Document}}" If="{Bind !Document.Done}"/>
 			<Button Icon="UnlockOutline" Content="Отменить проведение" Command="{BindCmd Execute, CommandName='unApply', Argument={Bind Document}, SaveRequired=True, Confirm='Отменить проведение документа?'}" If="{Bind Document.Done}"/>
 			<Button Icon="Print" Content="Печать" Command="{BindCmd Report, Report='Waybill', Argument={Bind Document}, SaveRequired=True}" />
 			<Button Icon="Print" Content="PrintDirect" Command="{BindCmd Report, Report='Waybill', Argument={Bind Document}, SaveRequired=True, Print=True}"/>
@@ -47,6 +48,13 @@
 					</Button.DropDown>
 				</Button>
 			</CommandBar>
+			<Hyperlink Icon="Link" Command="{BindCmd Dialog, Action=Show, Argument={Bind Document}, Url='/sales/waybill/showLinks'}">Show Links</Hyperlink>
+			<Card Header="Карточка" DropShadow="Shadow1"
+				  Hint="Поставте позначку для тих розділів, які використовуються. Якщо зняти позначку, розділ не буде включено до головного меню системи.">
+				<CardBody>
+					Текст карточки внутри с чем-то еще.
+				</CardBody>
+			</Card>
 		</Taskpad>
 	</Page.Taskpad>
 	<Alert Style="Warning" Icon="WarningOutline" If="{Bind Document.Done}">
@@ -54,20 +62,24 @@
 	</Alert>
 	<TabPanel>
 		<Tab Header="Документ">
-			<Grid Columns="150, 150, 150, 150, 1*">
+			<Grid Columns="150, 150, 150, 150, 150, 120, 1*">
 
 				<DatePicker Grid.Row="2" Grid.Col="4" Value="{Bind Document.Date}" Label="Date"/>
+				<TimePicker Grid.Row="2" Grid.Col="5" Value="{Bind Document.Date}" Label="Time" Placement="BottomRight"/>
+				<Button Content="Save" Command="{BindCmd Execute, CommandName=saveTime}" Grid.Row="2" Grid.Col="6"></Button>
 				<DatePicker Grid.Row="3" Grid.Col="4" Value="{Bind Document.Date}" Label="Date" View="Month"/>
+				<Code Grid.Row="3" Grid.Col="5" Content="{Bind Document.Date}"/>
 				<Header Grid.ColSpan="4" Badge="{Bind Document.Id}" Render="Show">Расходная накладная</Header>
 				<DatePicker Grid.Row="2" Label="Дата" Value="{Bind Document.$Date}" Render="{Bind 'Document.Id == 164 ? `Show` : `Hide`'}"/>
 				<TextBox Grid.Row="2" Label="Номер" Value="{Bind Document.No}" Align="Right" Number="True"/>
 				<Static Grid.Row="2" Grid.Col="3" Label="Код" Value="{Bind Document.Id}" Align="Right"/>
 				<TextBox Grid.Row="3" Grid.ColSpan="3"
-			Label="Покупатель" Value="{Bind Document.Agent.Name}" ValidateValue="{Bind Document.Agent}">
+					Label="Покупатель" Value="{Bind Document.Agent.Name}" ValidateValue="{Bind Document.Agent}">
 					<TextBox.AddOns>
 						<Hyperlink Icon="Search" Tip="Выберите покупателя" Command="{BindCmd Dialog, Action=Browse, Argument={Bind Document.Agent}, Url='/Agent/BrowseCustomer'}"/>
 					</TextBox.AddOns>
 				</TextBox>
+				<ValidatorLabel Grid.Row="4" Grid.Col="4"  Value="{Bind Document.Agent}"/>
 				<ComboBox Grid.Row="4" Grid.ColSpan="3" Label="Склад" ItemsSource="{Bind Warehouses}" Value="{Bind Document.DepFrom}" Style="Hyperlink"/>
 				<Table Grid.Row="5" Grid.ColSpan="3" Background="Rose" Border="False" GridLines="None">
 					<TableRow>
@@ -79,14 +91,14 @@
 						<TextBox Value="{Bind Document.No}" Align="Right" Number="True"/>
 					</TableRow>
 				</Table>
-				<Block Grid.Row="6" Grid.ColSpan="4">
+				<Block Grid.Row="6" Grid.ColSpan="6">
 					<Toolbar Style="Transparent">
 						<Button Icon="Add" Content="Добавить строку" Command="{BindCmd Append, Argument={Bind Document.Rows}}"/>
 						<Button Icon="Add" Content="В начало" Command="{BindCmd Prepend, Argument={Bind Document.Rows}}"/>
 					</Toolbar>
 					<Table ItemsSource="{Bind Document.Rows}"
                     Width="100%" GridLines="Both" Border="True" Background="Paper"
-                    Columns="Fit,100,Auto,Fit,100,100,100,Fit,Fit">
+                    Columns="Fit,100,Auto,Fit,100,100,100,Fit,Fit,Fit,Fit">
 						<Table.Header>
 							<TableRow VAlign="Middle">
 								<TableCell Wrap="NoWrap">№ п.п.</TableCell>
@@ -119,6 +131,8 @@
 							<TextBox Value="{Bind Qty, DataType=Number, HideZeros=True}" Align="Right"/>
 							<TextBox Value="{Bind Price, DataType=Currency, HideZeros=True}" Align="Right"/>
 							<TextBox Value="{Bind Sum, DataType=Currency, HideZeros=True}" Align="Right"/>
+							<Static Value="{Bind Sum, DataType=Currency, HideZeros=True}" Align="Right" Wrap="NoWrap"/>
+							<TableCell Content="{Bind Sum, DataType=Number, HideZeros=True}"></TableCell>
 
 							<Group>
 								<Hyperlink Size="Small" Icon="Delete" Command="{BindCmd Remove, Argument={Bind}, Confirm='Действительно удалить строку?'}"/>

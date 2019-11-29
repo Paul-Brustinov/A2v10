@@ -48,8 +48,9 @@
 		}
 	}
 
-	td.mcell{
-		padding:6px 0;
+	td.mcell {
+		padding: 6px 0;
+
 		> a {
 			padding: 4px;
 		}
@@ -122,6 +123,28 @@
 	}
 }
 
+.time-picker-pane {
+	display: flex;
+	flex-wrap: nowrap;
+	align-items: stretch;
+
+	.divider {
+		border-left: 1px solid #ddd;
+		padding-right: 8px;
+		margin-left: 8px;
+	}
+
+	th {
+		font-weight:500;
+		//line-height:1.5rem;
+		//text-align:center;
+		//border:none;
+		border-bottom:1px solid @light-gray-color!important;
+		color:#555;
+		padding:0 0 7px 0;
+	}
+}
+
 .drop-up .input-group > .calendar {
 	top: auto;
 	bottom: 100%;
@@ -153,7 +176,7 @@
 		white-space: nowrap;
 	}
 
-	&.open .period-text {
+	&.open:not(.pp-navbar):not(.pp-hyperlink) .period-text {
 		z-index: @popup-index + 1;
 		background-color: white;
 	}
@@ -243,6 +266,18 @@
 		.input-group {
 			.period-text {
 				line-height: 2.3rem;
+			}
+		}
+	}
+
+	&.pp-navbar {
+		margin-bottom: 0;
+
+		.input-group {
+			background-color: transparent;
+
+			.period-text {
+				font-size: 15px;
 			}
 		}
 	}

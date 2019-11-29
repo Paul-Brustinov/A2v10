@@ -43,10 +43,15 @@
 .panel {
 	margin-bottom: 12px;
 	background-color: white;
+	// flex: prevent margin collapse
+	display:flex;
+	flex-direction:column;
 
+	/* ???
 	.panel-content {
 		height:100%; //TODO:???
 	}
+	*/
 
 	.panel-header {
 		padding: 0 .625rem;
@@ -170,6 +175,7 @@
 		display: inline-block;
 		color: @link-color;
 		margin-bottom: .5rem;
+		align-self:flex-start;
 
 		.panel-collapse-handle {
 			display: none;
@@ -179,6 +185,10 @@
 			line-height: 1.25rem;
 			border-bottom: 1px dotted @link-color;
 		}
+	}
+
+	.panel-content {
+		overflow:visible;
 	}
 }
 
@@ -231,7 +241,7 @@
 	display: grid;
 	height: 100%;
 
-	.data-grid-container {
+	> .data-grid-container {
 		height: auto;
 		// hack!
 		max-height: -webkit-fill-available;
@@ -248,6 +258,9 @@
 
 .a2-include.full-height {
 	height: 100%;
+	.partial {
+		height:100%;
+	}
 }
 
 .scrollable-pane {
@@ -353,6 +366,10 @@ iframe.eusign-iframe {
 			line-height: @header-ling-height-compact;
 		}
 	}
+
+	.a2-list.compact .a2-list-item {
+		padding: 6px 6px 6px 12px;
+	}
 }
 
 .flex-list {
@@ -368,6 +385,9 @@ iframe.eusign-iframe {
 	&.horizontal {
 		flex-flow: row wrap;
 
+		&.no-wrap {
+			flex-wrap: nowrap;
+		}
 		.flex-list-item {
 			margin-right: @flex-padding;
 		}

@@ -23,6 +23,7 @@ namespace A2v10.Request
 
 (function() {
 	const DataModelController = component('baseController');
+	const eventBus = require('std:eventBus');
 
 	const utils = require('std:utils');
 	const uPeriod = require('std:period');
@@ -85,6 +86,7 @@ namespace A2v10.Request
 
 		internal const String FOOTER =
 		@"
+eventBus.$emit('beginLoad');
 const vm = new DataModelController({
 	el:'#$(RootId)',
 	props: {
@@ -96,6 +98,9 @@ const vm = new DataModelController({
 		utils() { return utils; },
 		period() { return uPeriod; }
 	},
+	mounted() {
+		eventBus.$emit('endLoad');
+	}
 });
 
 	vm.$data._host_ = {
@@ -237,7 +242,12 @@ const vm = new DataModelController({
 				var fm = fd.Value;
 				String propObj = fm.GetObjectType($"{meta.Name}.{fd.Key}");
 				if (propObj == "String")
-					propObj = $"{{type:String, len:{fm.Length}}}";
+				{
+					if (fm.IsJson)
+						propObj = $"{{type:String, len:{fm.Length}, json:true}}";
+					else
+						propObj = $"{{type:String, len:{fm.Length}}}";
+				}
 				else if (propObj == "TPeriod")
 					propObj = $"{{type: uPeriod.constructor}}";
 				sb.Append($"'{fd.Key}'")
@@ -268,6 +278,8 @@ const vm = new DataModelController({
 				sb.Append($"$permissions: '{meta.Permissions}',");
 			if (!String.IsNullOrEmpty(meta.Items))
 				sb.Append($"$items: '{meta.Items}',");
+			if (!String.IsNullOrEmpty(meta.MainObject))
+				sb.Append($"$main: '{meta.MainObject}',");
 			if (meta.IsGroup)
 				sb.Append($"$group: true,");
 			StringBuilder lazyFields = new StringBuilder();
@@ -308,6 +320,11 @@ const vm = new DataModelController({
 
 		String CreateTemplateForWrite(String fileTemplateText)
 		{
+			if (fileTemplateText != null && fileTemplateText.Contains("define([\"require\", \"exports\"]"))
+			{
+				// amd module
+				return fileTemplateText;
+			}
 
 			const String tmlHeader =
 @"(function() {
@@ -469,6 +486,8 @@ const vm = new DataModelController({
 			{
 				//fileTemplateText = await _host.ReadTextFileAsync(msi.Admin, msi.Path, msi.Template + ".js");
 				fileTemplateText = await _host.ApplicationReader.ReadTextFileAsync(msi.Path, msi.Template + ".js");
+				if (fileTemplateText == null)
+					throw new FileNotFoundException($"Template file '{Path.Combine(msi.Path, msi.Template + ".js").Replace('\\', '/')}' not found.");
 				AddRequiredModules(sbRequired, fileTemplateText);
 				templateText = CreateTemplateForWrite(Localize(fileTemplateText));
 			}

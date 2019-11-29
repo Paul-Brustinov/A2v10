@@ -1,4 +1,4 @@
-﻿// Copyright © 2015-2018 Alex Kukhtin. All rights reserved.
+﻿// Copyright © 2015-2019 Alex Kukhtin. All rights reserved.
 
 using System;
 using System.Web.Mvc;
@@ -23,11 +23,13 @@ using A2v10.Request;
 using A2v10.Web.Identity;
 using A2v10.Web.Mvc.Filters;
 using A2v10.Request.Models;
+using System.Net.Http.Headers;
+using System.Linq;
 
 namespace A2v10.Web.Mvc.Controllers
 {
 
-	[Authorize]
+	[AuthorizeFilter]
 	[ExecutingFilter]
 	[CheckMobileFilter]
 	public class ShellController : Controller, IControllerProfiler, IControllerTenant
@@ -36,6 +38,8 @@ namespace A2v10.Web.Mvc.Controllers
 
 		public Int64 UserId => User.Identity.GetUserId<Int64>();
 		public Int32 TenantId => User.Identity.GetUserTenantId();
+		public Int64 CompanyId => _baseController.UserStateManager.UserCompanyId(TenantId, UserId);
+
 		public String CatalogDataSource => _baseController.Host.CatalogDataSource;
 
 		public ShellController()
@@ -44,6 +48,7 @@ namespace A2v10.Web.Mvc.Controllers
 
 		#region IControllerProfiler
 		public IProfiler Profiler => _baseController.Host.Profiler;
+		public Boolean SkipRequest(String Url) { return false; }
 		#endregion
 
 		protected String RootUrl
@@ -81,6 +86,7 @@ namespace A2v10.Web.Mvc.Controllers
 			}
 
 			pathInfo = pathInfo.ToLowerInvariant();
+
 			if (pathInfo.StartsWith("admin/"))
 			{
 				pathInfo = pathInfo.Substring(6);
@@ -89,6 +95,12 @@ namespace A2v10.Web.Mvc.Controllers
 			}
 
 			_baseController.Host.StartApplication(_baseController.Admin);
+
+			if (pathInfo.EndsWith(".ts"))
+			{
+				TypeScriptSource(pathInfo);
+				return;
+			}
 
 			if (pathInfo.StartsWith("shell"))
 			{
@@ -101,10 +113,6 @@ namespace A2v10.Web.Mvc.Controllers
 			{
 				await Render(pathInfo.Substring(6), RequestUrlKind.Page);
 			}
-			//else if (pathInfo.StartsWith("_model/"))
-			//{
-			//await RenderModel(pathInfo.Substring(7));
-			//}
 			else if (pathInfo.StartsWith("_dialog/"))
 			{
 				await Render(pathInfo.Substring(8), RequestUrlKind.Dialog);
@@ -126,9 +134,9 @@ namespace A2v10.Web.Mvc.Controllers
 			{
 				await Attachment("/" + pathInfo); // with _attachment/ prefix
 			}
-			else if (pathInfo.StartsWith("_upload/"))
+			else if (pathInfo.StartsWith("_file/"))
 			{
-				await Upload("/" + pathInfo); // with _image prefix
+				await DoFile("/" + pathInfo); // with _image prefix
 			}
 			else if (pathInfo.StartsWith("_export/"))
 			{
@@ -152,10 +160,28 @@ namespace A2v10.Web.Mvc.Controllers
 			}
 			else if (pathInfo.StartsWith("_server"))
 				await RunServer(pathInfo.Substring(8));
+			else if (pathInfo.StartsWith("_application"))
+				await ApplicationCommand(pathInfo.Substring(13));
 			else
 			{
 				Index(); // root element (always)
 			}
+		}
+
+		public String GetUserPersonName()
+		{
+			var name = User.Identity.GetUserPersonName();
+			var clientId = User.Identity.GetUserClientId();
+			if (clientId != null)
+				name += $" [{clientId}]";
+			return Server.HtmlEncode(name);
+		}
+
+		public String GetCompanyButton()
+		{
+			if (!_baseController.Host.IsMultiCompany)
+				return String.Empty;
+			return "<a2-company-button :source=\"companies.menu\" :links=\"companies.links\"></a2-company-button>";
 		}
 
 		public void Index()
@@ -167,7 +193,8 @@ namespace A2v10.Web.Mvc.Controllers
 				{
 					{ "$(RootUrl)", RootUrl },
 					{ "$(HelpUrl)", _baseController.Host.HelpUrl },
-					{ "$(PersonName)", Server.HtmlEncode(User.Identity.GetUserPersonName()) },
+					{ "$(PersonName)", GetUserPersonName() },
+					{ "$(CompanyButton)", GetCompanyButton() },
 					{ "$(Theme)", _baseController.Host.Theme },
 					{ "$(Build)", _baseController.Host.AppBuild },
 					{ "$(Locale)", _baseController.CurrentLang },
@@ -206,7 +233,15 @@ namespace A2v10.Web.Mvc.Controllers
 			}
 			catch (Exception ex)
 			{
-				_baseController.WriteHtmlException(ex, Response.Output);
+				if (ex.Message.StartsWith("UI:"))
+				{
+					var error = _baseController.Localize(ex.Message.Substring(3));
+					_baseController.WriteExceptionStatus(ex, Response);
+				}
+				else
+				{
+					_baseController.WriteHtmlException(ex, Response.Output);
+				}
 			}
 		}
 
@@ -240,13 +275,36 @@ namespace A2v10.Web.Mvc.Controllers
 			}
 		}
 
+		async Task ApplicationCommand(String command)
+		{
+			//  Ajax
+			if (IsNotAjax())
+				return;
+			if (Request.HttpMethod != "POST")
+				return;
+			Response.ContentType = "application/json";
+			try
+			{
+				using (var tr = new StreamReader(Request.InputStream))
+				{
+					String json = tr.ReadToEnd();
+					await _baseController.ApplicationCommand(command, SetSqlQueryParams, json, Response);
+				}
+			}
+			catch (Exception ex)
+			{
+				WriteExceptionStatus(ex);
+			}
+		}
+
 		async Task RunServer(String pathInfo)
 		{
 			try
 			{
 				var baseUrl = Request.QueryString["baseUrl"];
 				await _baseController.Server(pathInfo, baseUrl, UserId, Response);
-			} catch (Exception ex)
+			}
+			catch (Exception ex)
 			{
 				WriteExceptionStatus(ex);
 			}
@@ -275,9 +333,16 @@ namespace A2v10.Web.Mvc.Controllers
 			prms.Append(_baseController.CheckPeriod(Request.QueryString), toPascalCase: true);
 		}
 
+		void SetSqlQueryParamsWithoutCompany(ExpandoObject prms)
+		{
+			SetUserTenantToParams(prms);
+			SetClaimsToParams(prms);
+		}
+
 		void SetSqlQueryParams(ExpandoObject prms)
 		{
 			SetUserTenantToParams(prms);
+			SetUserCompanyToParams(prms);
 			SetClaimsToParams(prms);
 		}
 
@@ -285,7 +350,15 @@ namespace A2v10.Web.Mvc.Controllers
 		{
 			prms.Set("UserId", UserId);
 			if (_baseController.Host.IsMultiTenant)
+			{
 				prms.Set("TenantId", TenantId);
+			}
+		}
+
+		void SetUserCompanyToParams(ExpandoObject prms)
+		{
+			if (_baseController.Host.IsMultiCompany)
+				prms.Set("CompanyId", CompanyId);
 		}
 
 		void SetClaimsToParams(ExpandoObject prms)
@@ -322,7 +395,6 @@ namespace A2v10.Web.Mvc.Controllers
 			// HTTP GET
 			try
 			{
-				ExpandoObject prms = new ExpandoObject();
 				ExpandoObject loadPrms = new ExpandoObject();
 				loadPrms.Append(_baseController.CheckPeriod(Request.QueryString), toPascalCase: true);
 				SetSqlQueryParams(loadPrms);
@@ -347,7 +419,7 @@ namespace A2v10.Web.Mvc.Controllers
 				if (!appReader.FileExists(fullPath))
 					throw new FileNotFoundException($"File not found '{path}'");
 				Response.ContentType = MimeMapping.GetMimeMapping(path);
-				using (var stream = appReader.FileStreamFullPath(fullPath))
+				using (var stream = appReader.FileStreamFullPathRO(fullPath))
 				{
 					stream.CopyTo(Response.OutputStream);
 				}
@@ -372,7 +444,7 @@ namespace A2v10.Web.Mvc.Controllers
 				if (!appReader.FileExists(fullPath))
 					throw new FileNotFoundException($"File not found '{path}'");
 				Response.ContentType = "text/html";
-				using (var stream = appReader.FileStreamFullPath(fullPath))
+				using (var stream = appReader.FileStreamFullPathRO(fullPath))
 				{
 					stream.CopyTo(Response.OutputStream);
 				}
@@ -414,21 +486,48 @@ namespace A2v10.Web.Mvc.Controllers
 			}
 		}
 
-		async Task Upload(String url)
+		async Task DoFile(String url)
 		{
-			if (Request.HttpMethod != "POST")
-				throw new RequestModelException("Invalid HttpMethod for upload");
-			if (IsNotAjax())
-				return;
-			Response.ContentType = "application/json";
-			try
+			switch (Request.HttpMethod.ToUpperInvariant())
 			{
-				var files = Request.Files;
-				await _baseController.SaveUploads(url, files, SetQueryStringAndSqlQueryParams, Response.Output);
-			}
-			catch (Exception ex)
-			{
-				WriteExceptionStatus(ex);
+				case "POST":
+					if (IsNotAjax())
+						return;
+					Response.ContentType = "application/json";
+					try
+					{
+						var files = Request.Files;
+						await _baseController.SaveFiles(url, files, SetQueryStringAndSqlQueryParams, Response.Output);
+					}
+					catch (Exception ex)
+					{
+						WriteExceptionStatus(ex);
+					}
+					break;
+				case "GET":
+					try
+					{
+						var ai = await _baseController.LoadFileGet(url, SetQueryStringAndSqlQueryParams);
+						if (ai == null)
+							return;
+						Response.ContentType = ai.Mime;
+						if (Request.QueryString["export"] != null)
+						{
+							var cdh = new ContentDispositionHeaderValue("attachment")
+							{
+								FileNameStar = _baseController.Localize(ai.Name)
+							};
+							Response.Headers.Add("Content-Disposition", cdh.ToString());
+						}
+						if (ai.Stream == null)
+							return;
+						Response.BinaryWrite(ai.Stream);
+					}
+					catch (Exception ex)
+					{
+						WriteExceptionStatus(ex);
+					}
+					break;
 			}
 		}
 
@@ -505,16 +604,21 @@ namespace A2v10.Web.Mvc.Controllers
 			Response.ContentType = "application/javascript";
 			try
 			{
-				Boolean isUserAdmin = User.Identity.IsUserAdmin();
-				if (admin && !isUserAdmin)
+				var userInfo = User.Identity.UserInfo();
+
+				if (admin && !userInfo.IsAdmin)
 					throw new AccessViolationException("The current user is not an administrator");
-				await _baseController.ShellScript(CatalogDataSource, SetSqlQueryParams, User.Identity.IsUserAdmin(), admin, Response.Output);
+
+				await _baseController.ShellScript(CatalogDataSource, SetSqlQueryParamsWithoutCompany, userInfo, admin, Response.Output);
 			}
 			catch (Exception ex)
 			{
 				if (ex.InnerException != null)
 					ex = ex.InnerException;
-				Response.Write($"alert('{ex.Message.EncodeJs()}')");
+				if (ex.Message.StartsWith("DB1001")) /*There is no such user*/
+					Response.Write($"window.location.assign('/account/login')");
+				else
+					Response.Write($"alert('{ex.Message.EncodeJs()}')");
 			}
 		}
 
@@ -576,6 +680,20 @@ namespace A2v10.Web.Mvc.Controllers
 		protected void WriteExceptionStatus(Exception ex)
 		{
 			_baseController.WriteExceptionStatus(ex, Response);
+		}
+
+		void TypeScriptSource(String pathInfo)
+		{
+			// path/[action|dialog|etc]/ts-file
+			Response.ContentType = "application/x-typescript";
+			String[] segments = pathInfo.Split('/');
+			Int32 len = segments.Length;
+			if (len < 3)
+				throw new RequestModelException($"Invalid typescript request: '{pathInfo}'");
+			String segmentPath = Path.Combine(segments.Take(len - 2).ToArray<String>());
+			String fullPath = _baseController.Host.ApplicationReader.MakeFullPath(segmentPath, segments[len-1]);
+			String content = System.IO.File.ReadAllText(fullPath);
+			Response.Write(content);
 		}
 	}
 }

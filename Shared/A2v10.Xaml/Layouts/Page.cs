@@ -19,7 +19,7 @@ namespace A2v10.Xaml
 		public BackgroundStyle Background { get; set; }
 		public CollectionView CollectionView { get; set; }
 
-		internal override void RenderElement(RenderContext context, Action<TagBuilder> onRender = null)
+		public override void RenderElement(RenderContext context, Action<TagBuilder> onRender = null)
 		{
 			if (SkipRender(context))
 				return;
@@ -69,7 +69,10 @@ namespace A2v10.Xaml
 				Toolbar?.RenderElement(context, (tag) => tag.AddCssClass("page-toolbar"));
 				Taskpad?.RenderElement(context, (tag) => tag.AddCssClass("page-taskpad"));
 				Pager?.RenderElement(context, (tag) => tag.AddCssClass("page-pager"));
-				var content = new TagBuilder("div", "page-content").RenderStart(context);
+				var content = new TagBuilder("div", "page-content");
+				if (ChildHasWrapper)
+					content.AddCssClass("with-wrapper");
+				content.RenderStart(context);
 				RenderChildren(context);
 				content.RenderEnd(context);
 			}
@@ -89,6 +92,8 @@ namespace A2v10.Xaml
 				page.RenderEnd(context);
 			}
 		}
+
+		public Boolean ChildHasWrapper => Children != null && Children.Count == 1 && Children[0] is IHasWrapper;
 
 		void AddAttributes(TagBuilder tag)
 		{
@@ -124,7 +129,7 @@ namespace A2v10.Xaml
 			CollectionView?.SetParent(this);
 		}
 
-		internal override void OnSetStyles()
+		public override void OnSetStyles()
 		{
 			base.OnSetStyles();
 			Toolbar?.OnSetStyles();
@@ -133,7 +138,7 @@ namespace A2v10.Xaml
 			CollectionView?.OnSetStyles();
 		}
 
-		internal override void OnDispose()
+		public override void OnDispose()
 		{
 			base.OnDispose();
 			Toolbar?.OnDispose();

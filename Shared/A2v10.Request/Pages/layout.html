@@ -29,18 +29,15 @@
 			<span class="title-notify" v-text="notifyText" :class="notifyClass"></span>
 			<div class="aligner"></div>
 			<a2-new-button :menu="newMenu" icon="plus" btn-style="success"></a2-new-button>
+			$(CompanyButton)
 			<a2-new-button :menu="settingsMenu" icon="gear-outline" title="@[Settings]"></a2-new-button>
 			<a class="nav-admin middle" v-if="hasFeedback" tabindex="-1" @click.prevent="showFeedback" title="@[Feedback]" :class="{open: feedbackVisible}"><i class="ico ico-comment-outline"></i></a>
 			<a class="nav-admin" v-if="userIsAdmin" href="/admin/" tabindex="-1"><i class="ico ico-gear-outline"></i></a>
-			<div class="dropdown dir-down" v-dropdown>
+			<div class="dropdown dir-down separate" v-dropdown>
 				<button class="btn user-name" toggle title="$(PersonName)"><i class="ico ico-user"></i> <span id="layout-person-name" class="person-name">$(PersonName)</span><span class="caret"></span></button>
 				<div class="dropdown-menu menu down-left">
 					<a v-for="(itm, itmIndex) in profileItems" @click.prevent="doProfileMenu(itm)" class="dropdown-item" tabindex="-1"><i class="ico" :class="'ico-' + itm.icon"></i> <span v-text="itm.title" :key="itmIndex"></span></a>
 					<a @click.prevent="changePassword" class="dropdown-item" tabindex="-1"><i class="ico ico-access"></i> @[ChangePassword]</a>
-					<template v-if="userIsAdmin">
-						<div class="divider"></div>
-						<a @click.prevent="changeUser" class="dropdown-item" tabindex="-1"><i class="ico ico-switch"></i> @[SubstUser]</a>
-					</template>
 					<div class="divider"></div>
 					<form id="logoutForm" method="post" action="/account/logoff">
 						<a href="javascript:document.getElementById('logoutForm').submit()" tabindex="-1" class="dropdown-item"><i class="ico ico-exit"></i> @[Quit]</a>
@@ -48,7 +45,7 @@
 				</div>
 			</div>
 		</header>
-		<a2-main-view :menu="menu" :side-bar-mode="sideBarMode"></a2-main-view>
+		<a2-main-view :menu="menu" :side-bar-mode="sideBarMode" :period="globalPeriod"></a2-main-view>
 		<a2-debug :model-stack="modelStack" :model-visible="debugShowModel" v-if="isDebug"
 				  :trace-visible="debugShowTrace" :counter="dataCounter" :close="debugClose"></a2-debug>
 		<a2-feedback v-if="hasFeedback" :model-stack="modelStack" :visible="feedbackVisible" :close="feedbackClose" :source="feedback"></a2-feedback>

@@ -1,6 +1,6 @@
 ﻿// Copyright © 2015-2019 Alex Kukhtin. All rights reserved.
 
-// 20190223-7441
+// 20191101-7575
 // locale-ru.js
 
 "use strict";
@@ -17,6 +17,7 @@
 		$Next: 'Далее',
 		$Finish: 'Готово',
 		$Tasks: 'Задачи',
+		$Quit: 'Выход',
 		$Save: 'Сохранить',
 		$NotSave: 'Не сохранять',
 		$Refresh: 'Обновить',
@@ -55,12 +56,14 @@
 		$AllPeriodData: 'За все время',
 		$CurrYear: 'Текущий год',
 		$PrevYear: 'Предыдущий год',
+		$CustomPeriod: 'Произвольно',
 		$License: 'лицензия',
 		$HomePage: 'домашняя страница',
 		$CreatedOpenSource: 'Создано с использованием программного обеспечения с открытым исходным кодом',
 		$Unknown: 'Не указано',
 		$ChooseFile: 'Выберите файл',
-		$AccessDenied: 'Доступ к системе запрещен!'
+		$AccessDenied: 'Доступ к системе запрещен!',
+		$PermissionDenied: 'Доступ запрещен!'
 	};
 
 	if (window.d3) {

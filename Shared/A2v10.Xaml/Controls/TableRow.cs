@@ -26,11 +26,11 @@ namespace A2v10.Xaml
 	{
 		public TableCellCollection Cells { get; set; } = new TableCellCollection();
 
-		public MarkStyle Mark { get; set; }
+		public Object Mark { get; set; }
 		public VerticalAlign VAlign { get; set; }
 		public TextAlign Align { get; set; }
 
-		internal override void RenderElement(RenderContext context, Action<TagBuilder> onRender = null)
+		public override void RenderElement(RenderContext context, Action<TagBuilder> onRender = null)
 		{
 			if (SkipRender(context))
 				return;
@@ -45,8 +45,6 @@ namespace A2v10.Xaml
 					throw new XamlException("The Bold and Mark bindings cannot be used at the same time");
 				row.MergeAttribute(":class", markBind.GetPathFormat(context));
 			}
-			else if (Mark != MarkStyle.Default)
-				row.AddCssClass(Mark.ToString().ToKebabCase());
 
 			if (Align != TextAlign.Left)
 				row.AddCssClass("text-" + Align.ToString().ToLowerInvariant());
@@ -81,14 +79,14 @@ namespace A2v10.Xaml
 				c.SetParent(this);
 		}
 
-		internal override void OnSetStyles()
+		public override void OnSetStyles()
 		{
 			base.OnSetStyles();
 			foreach (var c in Cells)
 				c.OnSetStyles();
 		}
 
-		internal override void OnDispose()
+		public override void OnDispose()
 		{
 			base.OnDispose();
 			foreach (var c in Cells)
@@ -98,7 +96,7 @@ namespace A2v10.Xaml
 
 	public class TableRowDivider : TableRow
 	{
-		internal override void RenderElement(RenderContext context, Action<TagBuilder> onRender = null)
+		public override void RenderElement(RenderContext context, Action<TagBuilder> onRender = null)
 		{
 			if (SkipRender(context))
 				return;

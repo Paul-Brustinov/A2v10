@@ -1,6 +1,6 @@
 ﻿// Copyright © 2015-2019 Alex Kukhtin. All rights reserved.
 
-// 20190226-7444
+// 20190813-7521
 // app.js
 
 "use strict";
@@ -15,6 +15,9 @@
 
 	window.require = require;
 	window.component = component;
+
+	// amd typescript support
+	window.define = define;
 
 	let rootElem = document.querySelector('meta[name=rootUrl]');
 	window.$$rootUrl = rootElem ? rootElem.content || '' : '';
@@ -46,4 +49,13 @@
 	function nextToken() {
 		return '' + currentToken++;
 	}
+
+	function define(args, factory) {
+		let exports = {
+			default: undefined
+		};
+		factory(require, exports);
+		return exports.default;
+	}
+
 })();

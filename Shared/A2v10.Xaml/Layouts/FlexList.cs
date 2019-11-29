@@ -19,8 +19,9 @@ namespace A2v10.Xaml
 
 		public BorderStyle BorderStyle { get; set; }
 		public AlignItems AlignItems { get; set; }
+		public Length MinWidth { get; set; }
 
-		internal override void RenderElement(RenderContext context, Action<TagBuilder> onRender = null)
+		public override void RenderElement(RenderContext context, Action<TagBuilder> onRender = null)
 		{
 			if (SkipRender(context))
 				return;
@@ -31,12 +32,14 @@ namespace A2v10.Xaml
 			list.AddCssClass(Orientation.ToString().ToLowerInvariant());
 			if (BorderStyle != BorderStyle.None)
 				list.AddCssClass($"border-{BorderStyle.ToString().ToKebabCase()}");
+			if (MinWidth != null)
+				list.MergeStyleUnit("min-width", MinWidth.Value);
 			list.RenderStart(context);
 			RenderChildren(context);
 			list.RenderEnd(context);
 		}
 
-		internal override void RenderChildren(RenderContext context, Action<TagBuilder> onRenderStatic = null)
+		public override void RenderChildren(RenderContext context, Action<TagBuilder> onRenderStatic = null)
 		{
 			foreach (var c in Children)
 			{

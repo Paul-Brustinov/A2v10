@@ -12,7 +12,7 @@ namespace A2v10.Xaml
 		public String Content { get; set; }
 		public Object Value { get; set; }
 
-		internal override void RenderElement(RenderContext context, Action<TagBuilder> onRender = null)
+		public override void RenderElement(RenderContext context, Action<TagBuilder> onRender = null)
 		{
 			if (SkipRender(context))
 				return;
@@ -34,7 +34,7 @@ namespace A2v10.Xaml
 			}
 			option.RenderStart(context);
 			if (Content != null)
-				context.Writer.Write(context.Localize(Content));
+				context.Writer.Write(context.LocalizeCheckApostrophe(Content));
 			option.RenderEnd(context);
 		}
 	}
@@ -76,7 +76,7 @@ namespace A2v10.Xaml
 			}
 		}
 
-		internal override void RenderElement(RenderContext context, Action<TagBuilder> onRender = null)
+		public override void RenderElement(RenderContext context, Action<TagBuilder> onRender = null)
 		{
 			if (CheckDisabledModel(context))
 				return;
@@ -135,7 +135,7 @@ namespace A2v10.Xaml
 					ch.SetParent(this);
 		}
 
-		internal override void OnSetStyles()
+		public override void OnSetStyles()
 		{
 			base.OnSetStyles();
 			if (_children != null)

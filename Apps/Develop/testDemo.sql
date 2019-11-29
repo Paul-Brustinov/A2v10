@@ -57,7 +57,7 @@ go
 --alter table a2v10demo.[Catalog.Customers] add Photo bigint null;
 --alter table a2v10demo.[Catalog.Customers] add [Date] datetime null;
 ------------------------------------------------
-alter procedure a2v10demo.[Catalog.Customer.Index]
+create or alter procedure a2v10demo.[Catalog.Customer.Index]
 @UserId bigint,
 @Id bigint = null, -- если вызывается как Browse
 @Order nvarchar(255) = null,
@@ -108,7 +108,7 @@ begin
 end
 go
 ------------------------------------------------
-alter procedure a2v10demo.[Catalog.Customer.Load]
+create or alter procedure a2v10demo.[Catalog.Customer.Load]
 @UserId bigint,
 @Id bigint = null /*for create new */
 as
@@ -125,7 +125,7 @@ begin
 end
 go
 ------------------------------------------------
-alter procedure a2v10demo.[Catalog.Customer.Photo.Load]
+create or alter procedure a2v10demo.[Catalog.Customer.Photo.Load]
 @UserId bigint,
 @Id bigint = null,
 @Key nvarchar(255)
@@ -136,7 +136,7 @@ begin
 end
 go
 ------------------------------------------------
-alter procedure a2v10demo.[Catalog.Customer.Photo.Update]
+create or alter procedure a2v10demo.[Catalog.Customer.Photo.Update]
 @UserId bigint,
 @Id bigint,
 @Key nvarchar(255),
@@ -231,7 +231,7 @@ end
 go
 
 ------------------------------------------------
-alter procedure a2v10demo.[Catalog.Invoke]
+create or alter procedure a2v10demo.[Catalog.Invoke]
 @UserId bigint,
 @Id bigint = null,
 @Name nvarchar(255) = null,
@@ -246,6 +246,101 @@ begin
 end
 go
 
+
+------------------------------------------------
+create or alter procedure [a2demo].[Agent.Copy]
+	@TenantId int = null,
+	@UserId bigint,
+	@Id bigint = null,
+	@Name nvarchar(255) = null
+as
+begin
+	set nocount on;
+	set transaction isolation level read uncommitted;
+	select [Agent!TAgent!Object] = null, [Id!!Id] = cast(0 as bigint), [Name!!Name] = [Name], [Type], 
+		Code, Tag, Memo, Folder, ParentFolder=Parent, Phone,
+		[Address!TAddress!Object] = null,
+		DateCreated, DateModified
+	from a2demo.Agents where Id=@Id and Void=0;
+
+	select [!TAddress!Object] = null, [Id!!Id] = Id, [!TAgent.Address!ParentId] = cast(0 as bigint),
+		Country, City, Street, Build, Appt 
+	from a2demo.Addresses where Agent = @Id;
+
+	select [Countries!TCountry!Array] = null, [Code!!Id] = Code, [Name!!Name] = [Name], [Cities!TCity!LazyArray] = null
+	from a2demo.Countries;
+
+	-- we need type declaration for City
+	select [!TCity!Array] = null, [Id!!Id] = Id, [Name!!Name] = [Name], [Streets!TStreet!LazyArray] = null
+	from a2demo.Cities where 0 <> 0; 
+
+	-- we need type declaration for Street
+	select [!TStreet!Array] = null, [Id!!Id] = Id, [Name!!Name] = [Name]
+	from a2demo.Streets where 0 <> 0; 
+
+	select [Params!TParam!Object] = null, [Name] = @Name;
+	select [!$System!] = null, [!!Copy] = 1;
+end
+go
+
+------------------------------------------------
+if not exists(select * from INFORMATION_SCHEMA.SCHEMATA where SCHEMA_NAME=N'a2user_state')
+begin
+	exec sp_executesql N'create schema a2user_state';
+	grant execute on schema ::a2user_state to public;
+end
+go
+
+------------------------------------------------
+if not exists(select * from INFORMATION_SCHEMA.TABLES where TABLE_SCHEMA=N'a2user_state' and TABLE_NAME=N'UserInfo')
+begin
+	create table a2user_state.UserInfo
+	(
+		UserId bigint not null,
+		[Key] nvarchar(32) not null,
+		[StringVal] nvarchar(255) null,
+		[DateFrom] datetime null,
+		[DateTo] datetime null,
+		[BoolVal] bit null,
+		[IntVal] bigint null,
+		[FloatVal] float null,
+		constraint PK_UserInfo primary key(UserId, [Key])
+	);
+end
+go
+------------------------------------------------
+create or alter procedure a2user_state.[SetGlobalPeriod]
+@TenantId int = 0,
+@UserId bigint,
+@From datetime,
+@To datetime
+as
+begin
+	set nocount on;
+	set transaction isolation level read committed;
+	update a2user_state.UserInfo set DateFrom=@From, DateTo = @To
+	where UserId = @UserId and [Key] = N'Period';
+	if @@rowcount = 0
+		insert into a2user_state.UserInfo(UserId, [Key], [DateFrom], [DateTo])
+			values (@UserId, N'Period', @From, @To);
+end
+go
+
+------------------------------------------------
+create or alter procedure a2user_state.GetUserGlobalPeriod(@UserId bigint, @From datetime = null output, @To datetime = null output)
+as
+	set nocount on;
+	set transaction isolation level read uncommitted;
+	if @From is null and @To is null
+	begin
+		select @From = [DateFrom], @To = DateTo 
+		from a2user_state.UserInfo where UserId = @UserId;
+		if @From is null
+			set @From = a2sys.fn_trimtime(getdate());
+		if @To is null
+			set @To = @From;
+	end
+go
 ------------------------------------------------
 set noexec off;
 go

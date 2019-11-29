@@ -1,6 +1,6 @@
 ﻿/* Copyright © 2015-2019 Alex Kukhtin. All rights reserved.*/
 
-// 20190412-7483
+/*20181101-7576*/
 // services/datamodel.js
 
 (function () {
@@ -19,6 +19,9 @@
 	const FLAG_VIEW = 1;
 	const FLAG_EDIT = 2;
 	const FLAG_DELETE = 4;
+	const FLAG_APPLY = 8;
+	const FLAG_UNAPPLY = 16;
+
 	const DEFAULT_PAGE_SIZE = 20;
 
 	const platform = require('std:platform');
@@ -67,9 +70,12 @@
 	function ensureType(type, val) {
 		if (!utils.isDefined(val))
 			val = utils.defaultValue(type);
-		if (type === Number) {
+		if (type === Number)
 			return utils.toNumber(val);
-		}
+		else if (type === String)
+			return utils.toString(val);
+		else if (type === Date && !utils.isDate(val))
+			return utils.date.parse('' + val);
 		return val;
 	}
 
@@ -133,8 +139,14 @@
 				let eventWasFired = false;
 				let skipDirty = prop.startsWith('$$');
 				let ctor = this._meta_.props[prop];
-				if (ctor.type) ctor = ctor.type;
-				val = ensureType(ctor, val);
+				let isjson = false;
+				if (ctor.type) {
+					isjson = !!ctor.json;
+					ctor = ctor.type;
+				}
+				if (!isjson) {
+					val = ensureType(ctor, val);
+				}
 				if (val === this._src_[prop])
 					return;
 				let oldVal = this._src_[prop];
@@ -152,7 +164,7 @@
 					this._src_[prop] = val;
 				}
 				if (!skipDirty) // skip special properties
-					this._root_.$setDirty(true, this._path_);
+					this._root_.$setDirty(true, this._path_, prop);
 				if (this._lockEvents_) return; // events locked
 				if (eventWasFired) return; // was fired
 				let eventName = (this._path_ || 'Root') + '.' + prop + '.change';
@@ -260,6 +272,18 @@
 		if (elem._meta_.$items)
 			elem.$expanded = false; // tree elem
 
+		elem.$lockEvents = function () {
+			this._lockEvents_ += 1;
+		};
+
+		elem.$unlockEvents = function () {
+			this._lockEvents_ -= 1;
+		};
+
+		defHiddenGet(elem, '$eventsLocked', function () {
+			return this._lockEvents_ > 0;
+		});
+
 		defPropertyGet(elem, '$valid', function () {
 			if (this._root_._needValidate_)
 				this._root_._validateAll_();
@@ -358,13 +382,22 @@
 				platform.defer(() => {
 					let isRequery = elem.$vm.__isModalRequery();
 					elem.$emit('Model.load', elem, _lastCaller, isRequery);
-					elem._root_.$setDirty(false);
+					elem._root_.$setDirty(elem._root_.$isCopy ? true : false);
 				});
+			};
+			elem._fireUnload_ = () => {
+				elem.$emit('Model.unload', elem);
 			};
 			defHiddenGet(elem, '$readOnly', isReadOnly);
 			defHiddenGet(elem, '$stateReadOnly', isStateReadOnly);
 			defHiddenGet(elem, '$isCopy', isModelIsCopy);
+			defHiddenGet(elem, '$mainObject', mainObject);
+
 			elem._seal_ = seal;
+
+			elem._fireGlobalPeriodChanged_ = (period) => {
+				elem.$emit('GlobalPeriod.change', elem, period);
+			};
 		}
 		if (startTime) {
 			logtime('create root time:', startTime, false);
@@ -417,6 +450,14 @@
 		return false;
 	}
 
+	function mainObject() {
+		if ('$main' in this._meta_) {
+			let mainProp = this._meta_.$main;
+			return this[mainProp];
+		}
+		return null;
+	}
+
 	function isModelIsCopy() {
 		if ('__modelInfo' in this) {
 			let mi = this.__modelInfo;
@@ -455,7 +496,7 @@
 			return arr;
 		for (let i = 0; i < source.length; i++) {
 			arr[i] = new arr._elem_(source[i], dotPath, arr);
-			arr[i].$checked = false;
+			arr[i].__checked = false;
 		}
 		return arr;
 	}
@@ -474,7 +515,7 @@
 
 		arr.$new = function (src) {
 			let newElem = new this._elem_(src || null, this._path_ + '[]', this);
-			newElem.$checked = false;
+			newElem.__checked = false;
 			return newElem;
 		};
 
@@ -538,6 +579,12 @@
 		arr.$load = function () {
 			if (!this.$isLazy()) return;
 			platform.defer(() => this.$loadLazy());
+		};
+
+		arr.$resetLazy = function () {
+			this.$empty();
+			if (this.$loaded)
+				this.$loaded = false;
 		};
 
 		arr.$loadLazy = function () {
@@ -734,6 +781,11 @@
 			return null;
 		});
 
+		defHiddenGet(obj, "$ready", function () {
+			if (!this.$vm) return true;
+			return !this.$vm.$isLoading;
+		});
+
 		obj.$isValid = function (props) {
 			return true;
 		};
@@ -801,6 +853,25 @@
 				return this[itmsName];
 			});
 		}
+		if (meta.$permissions) {
+			defHiddenGet(obj.prototype, "$permissions", function () {
+				let permName = this._meta_.$permissions;
+				if (!permName) return undefined;
+				var perm = this[permName];
+				if (this.$isNew && perm === 0) {
+					let mi = this.$ModelInfo;
+					if (mi && utils.isDefined(mi.Permissions))
+						perm = mi.Permissions;
+				}
+				return Object.freeze({
+					canView: !!(perm & FLAG_VIEW),
+					canEdit: !!(perm & FLAG_EDIT),
+					canDelete: !!(perm & FLAG_DELETE),
+					canApply: !!(perm & FLAG_APPLY),
+					canUnapply: !!(perm & FLAG_UNAPPLY)
+				});
+			});
+		}
 	}
 
 	function emitSelect(arr, item) {
@@ -832,6 +903,19 @@
 				}
 			}
 		};
+		Object.defineProperty(elem.prototype, '$checked', {
+			enumerable: true,
+			configurable: true, /* needed */
+			get() {
+				return this.__checked;
+			},
+			set(val) {
+				this.__checked = val;
+				let arr = this.$parent;
+				let checkEvent = arr._path_ + '[].check';
+				arr._root_.$emit(checkEvent, arr/*array*/, this);
+			}
+		});
 	}
 
 	function emit(event, ...arr) {
@@ -863,7 +947,7 @@
 			return null;
 		}
 		if (name in tml.delegates) {
-			return tml.delegates[name];
+			return tml.delegates[name].bind(this.$root);
 		}
 		console.error(`Delegate "${name}" not found in the template`);
 	}
@@ -1100,14 +1184,15 @@
 		//console.dir(allerrs);
 	}
 
-	function setDirty(val, path) {
+	function setDirty(val, path, prop) {
 		if (this.$root.$readOnly)
 			return;
 		if (path && path.toLowerCase().startsWith('query'))
 			return;
 		if (isNoDirty(this.$root))
 			return;
-		// TODO: template.options.skipDirty
+		if (path && prop && isSkipDirty(this.$root, `${path}.${prop}`))
+			return;
 		this.$dirty = val;
 	}
 
@@ -1143,6 +1228,15 @@
 		let t = root.$template;
 		let opts = t && t.options;
 		return opts && opts.noDirty;
+	}
+
+	function isSkipDirty(root, path) {
+		let t = root.$template;
+		const opts = t && t.options;
+		if (!opts) return false;
+		const sd = opts.skipDirty;
+		if (!sd || !utils.isArray(sd)) return false;
+		return sd.indexOf(path) !== -1;
 	}
 
 	function saveSelections() {
@@ -1223,6 +1317,7 @@
 			this._root_._needValidate_ = true;
 			this._lockEvents_ -= 1;
 		}
+		if (this.$parent._lockEvents_) return this; // may be custom lock
 		let newId = this.$id__;
 		let fireChange = false;
 		if (utils.isDefined(newId) && utils.isDefined(oldId))
@@ -1232,6 +1327,7 @@
 			let eventName = this._path_ + '.change';
 			this._root_.$emit(eventName, this.$parent, this, this, propFromPath(this._path_));
 		}
+		return this;
 	}
 
 	function implementRoot(root, template, ctors) {
@@ -1281,12 +1377,19 @@
 		return obj;
 	}
 
-	function setRootModelInfo(item, data) {
+	function setRootModelInfo(elem, data) {
 		if (!data.$ModelInfo) return;
-		let elem = item;
 		for (let p in data.$ModelInfo) {
 			if (!elem) elem = this[p];
 			elem.$ModelInfo = checkPeriod(data.$ModelInfo[p]);
+
+			elem.$ModelInfo.$setFilter = function (prop, val) {
+				if (period.isPeriod(val))
+					this.Filter[prop].assign(val);
+				else
+					this.Filter[prop] = val;
+			};
+
 			return; // first element only
 		}
 	}

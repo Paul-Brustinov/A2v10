@@ -1,6 +1,6 @@
 ﻿// Copyright © 2015-2019 Alex Kukhtin. All rights reserved.
 
-// 20190223-7441
+// 20191101-7575
 // locale-en.js
 
 "use strict";
@@ -17,6 +17,7 @@
 		$Next: 'Next',
 		$Finish: 'Finish',
 		$Tasks: 'Tasks',
+		$Quit: 'Quit',
 		$Save: 'Save',
 		$NotSave: 'Don\'t save',
 		$Refresh: 'Refresh',
@@ -55,12 +56,14 @@
 		$CurrYear: 'Сurrent year',
 		$PrevYear: 'Previous year',
 		$AllPeriodData: 'For all time',
+		$CustomPeriod: 'Custom',
 		$License: 'license',
 		$HomePage: 'homepage',
 		$CreatedOpenSource: 'Created using the following open source software',
 		$Unknown: 'Unknown',
 		$ChooseFile: 'Choose file',
-		$AccessDenied: 'Access denied!'
-	};
+		$AccessDenied: 'Access denied!',
+		$PermissionDenied: 'Access denied!'
+};
 
 })();

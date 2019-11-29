@@ -2,7 +2,11 @@
 /* index template */
 
 const template = {
-	properties: {
+    properties: {
+        'TRoot.$style': String,
+		'TRoot.$text'() {
+			return 'button text';
+		}
 	},
 	methods: {
 	},
@@ -14,6 +18,9 @@ const template = {
 	validators: {
 	},
 	commands: {
+		showAlert() {
+			alert('click!');
+		}
 	}
 };
 

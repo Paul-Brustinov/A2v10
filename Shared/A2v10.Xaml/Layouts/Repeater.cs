@@ -11,7 +11,7 @@ namespace A2v10.Xaml
 		public Object ItemsSource { get; set; }
 		public UIElementBase Content { get; set; }
 
-		internal override void RenderElement(RenderContext context, Action<TagBuilder> onRender = null)
+		public override void RenderElement(RenderContext context, Action<TagBuilder> onRender = null)
 		{
 			if (SkipRender(context))
 				return;
@@ -27,10 +27,11 @@ namespace A2v10.Xaml
 			{
 				using (new ScopeContext(context, "elem"))
 				{
-					Content.RenderElement(context, (tag)=> {
+					Content.RenderElement(context, (tag)=> 
+					{
+						onRender?.Invoke(tag);
 						tag.MergeAttribute(":key", "elemIndex");
-					}
-					);
+					});
 				}
 			}
 			div.RenderEnd(context);
@@ -42,7 +43,7 @@ namespace A2v10.Xaml
 			Content?.SetParent(this);
 		}
 
-		internal override void OnSetStyles()
+		public override void OnSetStyles()
 		{
 			base.OnSetStyles();
 			Content?.OnSetStyles();

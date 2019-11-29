@@ -1,6 +1,6 @@
 ﻿// Copyright © 2015-2019 Alex Kukhtin. All rights reserved.
 
-// 20190414-7485
+// 20191017-7568
 // services/utils.js
 
 app.modules['std:utils'] = function () {
@@ -19,6 +19,8 @@ app.modules['std:utils'] = function () {
 
 	const currencyFormat = new Intl.NumberFormat(numLocale, { minimumFractionDigits: 2, maximumFractionDigits: 6, useGrouping: true }).format;
 	const numberFormat = new Intl.NumberFormat(numLocale, { minimumFractionDigits: 0, maximumFractionDigits: 6, useGrouping: true }).format;
+
+	const utcdatRegEx = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/;
 
 	let numFormatCache = {};
 
@@ -65,7 +67,8 @@ app.modules['std:utils'] = function () {
 			endOfMonth: endOfMonth,
 			minDate: dateCreate(1901, 1, 1),
 			maxDate: dateCreate(2999, 12, 31),
-			fromDays: fromDays
+			fromDays: fromDays,
+			parseTime: timeParse
 		},
 		text: {
 			contains: textContains,
@@ -146,7 +149,7 @@ app.modules['std:utils'] = function () {
 			return '';
 		else if (isObject(obj))
 			return toJson(obj);
-		return obj + '';
+		return '' + obj;
 	}
 
 	function defaultValue(type) {
@@ -266,11 +269,13 @@ app.modules['std:utils'] = function () {
 				if (dateIsZero(obj))
 					return '';
 				return formatDate(obj);
-			case "DateUrl":
+			case 'DateUrl':
 				if (dateIsZero(obj))
 					return '';
+				if (dateHasTime(obj))
+					return obj.toISOString();
 				return '' + obj.getFullYear() + pad2(obj.getMonth() + 1) + pad2(obj.getDate());
-			case "Time":
+			case 'Time':
 				if (!isDate(obj)) {
 					console.error(`Invalid Date for utils.format (${obj})`);
 					return obj;
@@ -278,13 +283,13 @@ app.modules['std:utils'] = function () {
 				if (dateIsZero(obj))
 					return '';
 				return formatTime(obj);
-			case "Period":
+			case 'Period':
 				if (!obj.format) {
 					console.error(`Invalid Period for utils.format (${obj})`);
 					return obj;
 				}
 				return obj.format('Date');
-			case "Currency":
+			case 'Currency':
 				if (!isNumber(obj)) {
 					obj = toNumber(obj);
 					//TODO:check console.error(`Invalid Currency for utils.format (${obj})`);
@@ -295,7 +300,7 @@ app.modules['std:utils'] = function () {
 				if (opts.format)
 					return formatNumber(obj, opts.format);
 				return currencyFormat(obj);
-			case "Number":
+			case 'Number':
 				if (!isNumber(obj)) {
 					obj = toNumber(obj);
 					//TODO:check console.error(`Invalid Number for utils.format (${obj})`);
@@ -377,8 +382,24 @@ app.modules['std:utils'] = function () {
 		}
 	}
 
+	function timeParse(str) {
+		str = str || '';
+		if (!str) return dateZero();
+		let seg = str.split(/[^\d]/).filter(x => x);
+		if (seg.length === 1) {
+			seg.push('0');
+		}
+		let h = Math.min(+seg[0], 23);
+		let m = Math.min(+seg[1], 59);
+		let td = new Date(0, 0, 1, h, m, 0, 0);
+		return td;
+	}
+
 	function dateParse(str) {
 		str = str || '';
+		if (utcdatRegEx.test(str)) {
+			return new Date(str);
+		}
 		if (!str) return dateZero();
 		let today = dateToday();
 		let seg = str.split(/[^\d]/).filter(x => x);
@@ -413,6 +434,11 @@ app.modules['std:utils'] = function () {
 	function dateIsZero(d1) {
 		if (!isDate(d1)) return false;
 		return dateEqual(d1, dateZero());
+	}
+
+	function dateHasTime(d1) {
+		if (!isDate(d1)) return false;
+		return d1.getUTCHours() !== 0 || d1.getUTCMinutes() !== 0 && d1.getUTCSeconds() !== 0;
 	}
 
 	function endOfMonth(dt) {
@@ -454,9 +480,11 @@ app.modules['std:utils'] = function () {
 				let du = 1000 * 60 * 60 * 24;
 				return Math.floor((d2 - d1) / du);
 			case "year":
-			case 'year':
 				var dd = new Date(d1.getFullYear(), d2.getMonth(), d2.getDate(), d2.getHours(), d2.getMinutes(), d2.getSeconds(), d2.getMilliseconds());
-				return d2.getFullYear() - d1.getFullYear() + (dd < d1 ? (d2 > d1 ? -1 : 0) : (d2 < d1 ? 1 : 0));
+				let dy = dd < d1 ?
+					d2 > d1 ? -1 : 0 :
+					d2 < d1 ? 1  : 0;
+				return d2.getFullYear() - d1.getFullYear() + dy;
 		}
 		throw new Error('Invalid unit value for utils.date.diff');
 	}

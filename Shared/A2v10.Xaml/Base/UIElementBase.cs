@@ -25,7 +25,7 @@ namespace A2v10.Xaml
 
 		public String Tip { get; set; }
 
-		internal abstract void RenderElement(RenderContext context, Action<TagBuilder> onRender = null);
+		public abstract void RenderElement(RenderContext context, Action<TagBuilder> onRender = null);
 
 		[Flags]
 		public enum MergeAttrMode
@@ -43,7 +43,7 @@ namespace A2v10.Xaml
 			SpecialWizardPage = Margin | Wrap | Tip
 		}
 
-		internal virtual void MergeVisibilityAttribures(TagBuilder tag, RenderContext context)
+		protected virtual void MergeVisibilityAttribures(TagBuilder tag, RenderContext context)
 		{
 			MergeBindingAttributeBool(tag, context, "v-if", nameof(If), If);
 			MergeBindingAttributeBool(tag, context, "v-show", nameof(Show), Show);
@@ -51,7 +51,7 @@ namespace A2v10.Xaml
 			MergeBindingAttributeBool(tag, context, "v-show", nameof(Hide), Hide, bInvert: true);
 		}
 
-		internal virtual void MergeAttributes(TagBuilder tag, RenderContext context, MergeAttrMode mode = MergeAttrMode.All)
+		public virtual void MergeAttributes(TagBuilder tag, RenderContext context, MergeAttrMode mode = MergeAttrMode.All)
 		{
 			if (mode.HasFlag(MergeAttrMode.Visibility))
 			{
@@ -83,7 +83,7 @@ namespace A2v10.Xaml
 			tag.MergeAttribute("id", HtmlId);
 		}
 
-		internal void RenderContent(RenderContext context, Object content)
+		protected void RenderContent(RenderContext context, Object content)
 		{
 			// if it's a binding, it will be added via MergeAttribute
 			if (content == null)
@@ -91,10 +91,10 @@ namespace A2v10.Xaml
 			if (content is UIElementBase)
 				(content as UIElementBase).RenderElement(context);
 			else if (content != null)
-				context.Writer.Write(context.Localize(content.ToString()));
+				context.Writer.Write(context.LocalizeCheckApostrophe(content.ToString().Replace("\\n", "<br>")));
 		}
 
-		internal void MergeBindingAttributeString(TagBuilder tag, RenderContext context, String attrName, String propName, String propValue)
+		protected void MergeBindingAttributeString(TagBuilder tag, RenderContext context, String attrName, String propName, String propValue)
 		{
 			var attrBind = GetBinding(propName);
 			if (attrBind != null)
@@ -103,7 +103,7 @@ namespace A2v10.Xaml
 				tag.MergeAttribute(attrName, context.Localize(propValue));
 		}
 
-		internal void MergeAttributeInt32(TagBuilder tag, RenderContext context, String attrName, String propName, Int32? propValue)
+		protected void MergeAttributeInt32(TagBuilder tag, RenderContext context, String attrName, String propName, Int32? propValue)
 		{
 			var attrBind = GetBinding(propName);
 			if (attrBind != null)
@@ -112,7 +112,7 @@ namespace A2v10.Xaml
 				tag.MergeAttribute($":{attrName}", propValue.ToString());
 		}
 
-		internal void MergeValueItemProp(TagBuilder input, RenderContext context, String valueName)
+		protected void MergeValueItemProp(TagBuilder input, RenderContext context, String valueName)
 		{
 			var valBind = GetBinding(valueName);
 			if (valBind == null)
@@ -121,7 +121,7 @@ namespace A2v10.Xaml
 			String path = valBind.GetPath(context);
 			(String Path, String Prop) = SplitToPathProp(path);
 			if (String.IsNullOrEmpty(Path) || String.IsNullOrEmpty(Prop))
-				throw new XamlException($"invalid binding for {valueName} '{path}'");
+				throw new XamlException($"Invalid binding for {valueName} '{path}'");
 			input.MergeAttribute(":item", Path);
 			input.MergeAttribute("prop", Prop);
 			if (valBind.DataType != DataType.String)
@@ -138,7 +138,7 @@ namespace A2v10.Xaml
 		}
 
 
-		internal void MergeValidateValueItemProp(TagBuilder input, RenderContext context, String valueName)
+		protected void MergeValidateValueItemProp(TagBuilder input, RenderContext context, String valueName)
 		{
 			var valBind = GetBinding(valueName);
 			if (valBind == null)
@@ -147,12 +147,12 @@ namespace A2v10.Xaml
 			String path = valBind.GetPath(context);
 			var (Path, Prop) = SplitToPathProp(path);
 			if (String.IsNullOrEmpty(Path) || String.IsNullOrEmpty(Prop))
-				throw new XamlException($"invalid binding for {valueName} '{path}'");
+				throw new XamlException($"Invalid binding for {valueName} '{path}'");
 			input.MergeAttribute(":item-to-validate", Path);
 			input.MergeAttribute("prop-to-validate", Prop);
 		}
 
-		internal void MergeCustomValueItemProp(TagBuilder input, RenderContext context, String valueName, String prefix)
+		protected void MergeCustomValueItemProp(TagBuilder input, RenderContext context, String valueName, String prefix)
 		{
 			var valBind = GetBinding(valueName);
 			if (valBind == null)
@@ -161,12 +161,12 @@ namespace A2v10.Xaml
 			String path = valBind.GetPath(context);
 			(String Path, String Prop) = SplitToPathProp(path);
 			if (String.IsNullOrEmpty(Path) || String.IsNullOrEmpty(Prop))
-				throw new XamlException($"invalid binding for {valueName} '{path}'");
+				throw new XamlException($"Invalid binding for {valueName} '{path}'");
 			input.MergeAttribute($":{prefix}-item", Path);
 			input.MergeAttribute($"{prefix}-prop", Prop);
 		}
 
-		internal (String Path, String Prop) SplitToPathProp(String path)
+		protected (String Path, String Prop) SplitToPathProp(String path)
 		{
 			var result = (Path: "", Prop: "");
 			String itemPath = String.Empty;
@@ -182,7 +182,7 @@ namespace A2v10.Xaml
 			return result;
 		}
 
-		internal void RenderBadge(RenderContext context, String badge)
+		protected void RenderBadge(RenderContext context, String badge)
 		{
 			var badgeBind = GetBinding("Badge");
 			if (badgeBind != null)
@@ -195,7 +195,7 @@ namespace A2v10.Xaml
 			else if (!String.IsNullOrEmpty(badge))
 			{
 				new TagBuilder("span", "badge")
-					.SetInnerText(context.Localize(badge))
+					.SetInnerText(context.LocalizeCheckApostrophe(badge))
 					.Render(context);
 			}
 		}
@@ -209,7 +209,7 @@ namespace A2v10.Xaml
 				input.MergeAttribute("align", align.ToString().ToLowerInvariant());
 		}
 
-		internal virtual Boolean SkipRender(RenderContext context)
+		protected virtual Boolean SkipRender(RenderContext context)
 		{
 			var rm = GetRenderMode(context);
 			if (rm == null)
@@ -221,7 +221,7 @@ namespace A2v10.Xaml
 			return false;
 		}
 
-		internal RenderMode? GetRenderMode(RenderContext context)
+		protected RenderMode? GetRenderMode(RenderContext context)
 		{
 			var renderBind = GetBinding(nameof(Render));
 			if (renderBind == null && Render == null)
@@ -252,7 +252,7 @@ namespace A2v10.Xaml
 			base.OnEndInit();
 		}
 
-		internal override void OnSetStyles()
+		public override void OnSetStyles()
 		{
 			XamlStyle?.Set(this);
 		}

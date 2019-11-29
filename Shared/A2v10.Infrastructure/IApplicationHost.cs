@@ -1,7 +1,6 @@
-﻿// Copyright © 2015-2018 Alex Kukhtin. All rights reserved.
+﻿// Copyright © 2015-2019 Alex Kukhtin. All rights reserved.
 
 using System;
-using System.Threading.Tasks;
 
 namespace A2v10.Infrastructure
 {
@@ -13,18 +12,25 @@ namespace A2v10.Infrastructure
 		String AppKey { get; }
 		String AppDescription { get; }
 		String AppHost { get; }
+		String UserAppHost { get; }
 		String SupportEmail { get; }
 		String Theme { get; }
 		String HelpUrl { get; }
 		String HostingPath { get; }
+		String SmtpConfig { get; }
 		Boolean Mobile { get; set; }
 
 		Boolean IsDebugConfiguration { get; }
 		Boolean IsRegistrationEnabled { get; }
+		Boolean IsDTCEnabled { get; }
+		Boolean IsAdminAppPresent { get; }
 
 		String UseClaims { get; }
 
 		Boolean IsMultiTenant { get; }
+		Boolean IsMultiCompany { get; }
+		Boolean IsUsePeriodAndCompanies { get; }
+
 		Int32? TenantId { get; set; }
 
 		IApplicationReader ApplicationReader { get; }

@@ -3,6 +3,7 @@
 @icon-blue: #034989;
 @icon-green: #3a8b37;
 @icon-red: #a94442;
+@icon-orange: #e59400;
 @icon-light-blue: #1ba1e2;
 @icon-light-red: #e41400;
 @icon-light-yellow: #ffcc00;
@@ -15,7 +16,7 @@
 	font-family: 'A2v10';
 	font-display: fallback;
 	src: url('/css/fonts/A2v10.eot');
-	src: url('/css/fonts/A2v10.eot?#iefix') format('eot'), url('/css/fonts/A2v10.woff?v=7463') format('woff'), url('/css/fonts/A2v10.ttf?v=7463') format('truetype'), url('/css/fonts/A2v10.svg#A2v10') format('svg');
+	src: url('/css/fonts/A2v10.eot?#iefix') format('eot'), url('/css/fonts/A2v10.woff?v=7550') format('woff'), url('/css/fonts/A2v10.ttf?v=7550') format('truetype'), url('/css/fonts/A2v10.svg#A2v10') format('svg');
 	font-weight: normal;
 	font-style: normal;
 }
@@ -78,6 +79,10 @@
 	content: "\e903";
 }
 
+.ico-arrow-left-right:before {
+	content: "\e906";
+}
+
 .ico-arrow-export:before {
 	content: "\e908";
 }
@@ -104,6 +109,14 @@
 
 .ico-ban:before {
 	content: "\ea0a";
+}
+
+.ico-circle:before {
+	content: "\ea0b";
+}
+
+.ico-circle-small:before {
+	content: "\ea0c";
 }
 
 .ico-ban-red:before {
@@ -163,8 +176,12 @@
 	content: "\e936";
 }
 
-.ico-send:before {
+.ico-send-outline:before {
 	content: "\e950";
+}
+
+.ico-send:before {
+	content: "\e951";
 }
 
 .ico-attach:before {
@@ -221,6 +238,14 @@
 
 .ico-check-bold:before {
 	content: "\e977";
+}
+
+.ico-checkbox:before {
+	content: "\e979";
+}
+
+.ico-checkbox-checked:before {
+	content: "\e97a";
 }
 
 .ico-chevron-down:before {
@@ -399,6 +424,10 @@
 	content: "\e9dd";
 }
 
+.ico-file-failure:before {
+	content: "\e9e0";
+}
+
 .ico-file-content:before {
 	content: "\e9e1";
 }
@@ -423,8 +452,24 @@
 	content: "\e9e6";
 }
 
+.ico-file-success:before {
+	content: "\e9e7";
+}
+
+.ico-file-warning:before {
+	content: "\e9e8";
+}
+
 .ico-report:before {
 	content: "\e9e9";
+}
+
+.ico-company:before {
+	content: "\e9ea";
+}
+
+.ico-home:before {
+	content: "\e9eb";
 }
 
 .ico-file-error:before {
@@ -701,7 +746,7 @@
 
 .ico-confirm:before {
 	content: "\ea16";
-	color: #e59400;
+	color: @icon-orange;
 }
 
 .ico-warning-outline:before {
@@ -809,6 +854,10 @@
 
 .ico-external:before {
 	content: "\e9d0";
+}
+
+.ico-bell:before {
+	content: "\e9d1";
 }
 
 .ico-log:before {

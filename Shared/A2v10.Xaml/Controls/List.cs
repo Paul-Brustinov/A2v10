@@ -40,7 +40,7 @@ namespace A2v10.Xaml
 
 		public UIElement EmptyPanel { get; set; }
 
-		internal override void RenderElement(RenderContext context, Action<TagBuilder> onRender = null)
+		public override void RenderElement(RenderContext context, Action<TagBuilder> onRender = null)
 		{
 			if (SkipRender(context))
 				return;
@@ -67,7 +67,7 @@ namespace A2v10.Xaml
 			var mbind = GetBinding(nameof(Mark));
 			if (mbind != null)
 			{
-				ul.MergeAttribute("mark", mbind.GetPath(context));
+				ul.MergeAttribute("mark", mbind.Path /*without scope, property name*/);
 			}
 			else if (Mark != null)
 			{
@@ -115,8 +115,8 @@ namespace A2v10.Xaml
 				foreach (var c in Content)
 				{
 					var li = new TagBuilder("li", "a2-list-item");
+					c.MergeBindingAttributeBool(li, context, "v-if", "If", c.If);
 					li.MergeAttribute("tabindex", "1");
-					//li.MergeAttribute("@click.prevent", "$exec('test')");
 					li.RenderStart(context);
 					c.RenderElement(context);
 					li.RenderEnd(context);

@@ -7,7 +7,7 @@ using System.Text;
 
 namespace A2v10.Xaml
 {
-	internal enum TagRenderMode
+	public enum TagRenderMode
 	{
 		Normal = 0,
 		StartTag = 1,
@@ -15,7 +15,7 @@ namespace A2v10.Xaml
 		SelfClosing = 3
 	}
 
-	internal class TagBuilder
+	public class TagBuilder
 	{
 		public String TagName { get; }
 		public String InnerText { get; set; }
@@ -209,7 +209,7 @@ namespace A2v10.Xaml
 					break;
 				case TagRenderMode.Normal:
 					context.Writer.Write(CreateStartTag(context, false));
-					context.Writer.Write(context.Localize(InnerText));
+					context.Writer.Write(context.LocalizeCheckApostrophe(InnerText));
 					context.Writer.Write($"</{TagName}>");
 					break;
 				case TagRenderMode.EndTag:

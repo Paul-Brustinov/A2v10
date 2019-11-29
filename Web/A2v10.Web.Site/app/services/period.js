@@ -1,6 +1,6 @@
 ﻿// Copyright © 2015-2019 Alex Kukhtin. All rights reserved.
 
-// 20190223-7441
+/*20191101-7575*/
 // services/period.js
 
 app.modules['std:period'] = function () {
@@ -104,7 +104,7 @@ app.modules['std:period'] = function () {
 			}
 		}
 		if (showCustom)
-			return 'Довільно';
+			return locale.$CustomPeriod;
 		let from = this.From;
 		let to = this.To;
 		return utils.format(from, 'Date') + ' - ' + (utils.format(to, 'Date') || '???');
@@ -129,6 +129,9 @@ app.modules['std:period'] = function () {
 		return this.normalize();
 	};
 
+	TPeriod.prototype.toJson = function () {
+		return JSON.stringify(this);
+	};
 
 	
 	return {

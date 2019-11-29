@@ -27,7 +27,7 @@ namespace A2v10.Xaml
 
 		public Object ItemsSource { get; set; }
 
-		internal override void RenderElement(RenderContext context, Action<TagBuilder> onRender = null)
+		public override void RenderElement(RenderContext context, Action<TagBuilder> onRender = null)
 		{
 			if (SkipRender(context))
 				return;
@@ -79,7 +79,7 @@ namespace A2v10.Xaml
 			td.RenderStart(context);
 			RenderContent(context);
 			/*
-             * Никакого толку, содержимое в атрибуте
+             * no use, the content in the attribute
             if (Validate)
             {
                 var val = new TagBuilder("validator-control");

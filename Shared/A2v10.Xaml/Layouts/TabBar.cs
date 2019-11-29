@@ -1,11 +1,22 @@
 ﻿// Copyright © 2019 Alex Kukhtin. All rights reserved.
 
 
+using A2v10.Infrastructure;
 using System;
 using System.Windows.Markup;
 
 namespace A2v10.Xaml
 {
+
+	public enum TabBarStyle
+	{
+		Default,
+		MainMenu,
+		Tab,
+		Wizard,
+		ButtonGroup
+	}
+
 	[ContentProperty("Buttons")]
 	public class TabBar : UIElement
 	{
@@ -14,7 +25,10 @@ namespace A2v10.Xaml
 		public ShadowStyle DropShadow { get; set; }
 		public Object Description { get; set; }
 
-		internal override void RenderElement(RenderContext context, Action<TagBuilder> onRender = null)
+		public Object ItemsSource { get; set; }
+		public TabBarStyle Style { get; set; }
+
+		public override void RenderElement(RenderContext context, Action<TagBuilder> onRender = null)
 		{
 			if (SkipRender(context))
 				return;
@@ -26,6 +40,8 @@ namespace A2v10.Xaml
 				panel.AddCssClass("drop-shadow");
 				panel.AddCssClass(DropShadow.ToString().ToLowerInvariant());
 			}
+			if (Style != TabBarStyle.Default)
+				panel.AddCssClass($"tab-bar-{Style.ToString().ToKebabCase()}");
 
 			panel.RenderStart(context);
 			RenderButtons(context);
@@ -38,15 +54,31 @@ namespace A2v10.Xaml
 
 		void RenderButtons(RenderContext context)
 		{
+			var isBind = GetBinding(nameof(ItemsSource));
+			if (isBind != null && Buttons.Count != 1)
+				throw new XamlException("For a TabBar with an items source, only one child element is allowed");
 			String valPath = null;
 			var valBind = GetBinding(nameof(Value));
 			valPath = valBind?.GetPathFormat(context);
 			foreach (var b in Buttons)
 			{
 				var tag = new TagBuilder(null, "a2-tab-bar-item");
-				tag.RenderStart(context);
-				b.RenderMe(context, valPath);
-				tag.RenderEnd(context);
+				if (isBind != null)
+				{
+					tag.MergeAttribute("v-for", $"(btn, btnIndex) in {isBind.GetPath(context)}");
+					tag.RenderStart(context);
+					using (new ScopeContext(context, "btn"))
+					{
+						b.RenderMe(context, valPath);
+					}
+					tag.RenderEnd(context);
+				}
+				else
+				{
+					tag.RenderStart(context);
+					b.RenderMe(context, valPath);
+					tag.RenderEnd(context);
+				}
 			}
 		}
 
@@ -65,7 +97,7 @@ namespace A2v10.Xaml
 			else if (Description is UIElementBase uiDescr)
 				uiDescr.RenderElement(context);
 			else if (Description != null)
-				context.Writer.Write(context.Localize(Description.ToString()));
+				context.Writer.Write(context.LocalizeCheckApostrophe(Description.ToString()));
 			wrap.RenderEnd(context);
 		}
 

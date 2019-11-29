@@ -29,14 +29,13 @@ namespace A2v10.Xaml
 				var targetProp = iTarget.TargetProperty as PropertyInfo;
 				if (targetProp == null)
 					return null;
-				if (targetProp.PropertyType != typeof(Object) && targetProp.PropertyType != typeof(UIElement))
+				if (targetProp.PropertyType != typeof(Object) && targetProp.PropertyType != typeof(UIElementBase))
 				{
-					throw new XamlException("The 'Source' markup extension can only be used for properties that are of type 'System.Object' or 'A2v10.Xaml.UIElement'");
+					throw new XamlException("The 'Source' markup extension can only be used for properties that are of type 'System.Object' or 'A2v10.Xaml.UIElementBase'");
 				}
 
-				var root = serviceProvider.GetService(typeof(IUriContext)) as IUriContext;
 				String baseFileName = XamlRenderer.RootFileName;
-				if (root != null && root.BaseUri != null)
+				if (serviceProvider.GetService(typeof(IUriContext)) is IUriContext root && root.BaseUri != null)
 					baseFileName = root.BaseUri.PathAndQuery;
 				return Load(baseFileName);
 			}
@@ -70,7 +69,7 @@ namespace A2v10.Xaml
 				String trgPath = System.IO.Path.ChangeExtension(targetDir, "xaml");
 				if (appReader.FileExists(trgPath))
 				{
-					using (var stream = appReader.FileStreamFullPath(trgPath)) { 
+					using (var stream = appReader.FileStreamFullPathRO(trgPath)) { 
 						return XamlServices.Load(stream);
 					}
 				}

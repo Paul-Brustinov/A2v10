@@ -37,6 +37,7 @@ namespace A2v10.Web.Mvc.Controllers
 		private readonly IApplicationHost _host;
 		private readonly IDbContext _dbContext;
 		private readonly ILocalizer _localizer;
+		private readonly IUserStateManager _userStateManager;
 
 		public AccountController()
 		{
@@ -45,6 +46,7 @@ namespace A2v10.Web.Mvc.Controllers
 			_host = serviceLocator.GetService<IApplicationHost>();
 			_dbContext = serviceLocator.GetService<IDbContext>();
 			_localizer = serviceLocator.GetService<ILocalizer>();
+			_userStateManager = serviceLocator.GetService<IUserStateManager>();
 			_host.StartApplication(false);
 		}
 
@@ -67,17 +69,19 @@ namespace A2v10.Web.Mvc.Controllers
 
 				AppTitleModel appTitle = _dbContext.Load<AppTitleModel>(_host.CatalogDataSource, "a2ui.[AppTitle.Load]");
 
-				StringBuilder layout = new StringBuilder(_localizer.Localize(null, GetRedirectedPage("layout", ResourceHelper.InitLayoutHtml)));
+				var layoutHtml = _host.Mobile ? ResourceHelper.InitLayoutMobileHtml : ResourceHelper.InitLayoutHtml;
+
+				StringBuilder layout = new StringBuilder(_localizer.Localize(null, GetRedirectedPage("layout", layoutHtml)));
 				layout.Replace("$(Lang)", CurrentLang);
 				layout.Replace("$(Build)", _host.AppBuild);
 				layout.Replace("$(AssetsStyleSheets)", _host.AppStyleSheetsLink("applink"));
 				StringBuilder html = new StringBuilder(rsrcHtml);
 				layout.Replace("$(Partial)", html.ToString());
 				layout.Replace("$(Title)", appTitle?.AppTitle);
+				layout.Replace("$(HelpUrl)", _host.HelpUrl);
 				layout.Replace("$(Description)", _host.AppDescription);
 				layout.Replace("$(ErrorMessage)", _localizer.Localize(null, errorMessage));
-				layout.Replace("@(SiteMeta)", GetSiteMetaTags());
-
+				layout.Replace("@(SiteMeta)", Request.GetSiteMetaTags(_host));
 
 				String mtMode = _host.IsMultiTenant.ToString().ToLowerInvariant();
 				String regMode = _host.IsRegistrationEnabled.ToString().ToLowerInvariant();
@@ -103,24 +107,10 @@ namespace A2v10.Web.Mvc.Controllers
 			}
 		}
 
-		String GetSiteMetaTags()
-		{
-			var host = Request.Headers["Host"];
-			if (host == null)
-				return String.Empty;
-			Int32 dotPos = host.IndexOfAny(":".ToCharArray());
-			if (dotPos != -1)
-				host = host.Substring(0, dotPos);
-			host = host.Replace('.', '_').ToLowerInvariant();
-			String metaText = _host.ApplicationReader.ReadTextFile("_meta/", $"{host}.head");
-			if (metaText != null)
-				return metaText;
-			return String.Empty;
-		}
-
 		String GetRedirectedPage(String pageName, String fallback)
 		{
-			String redirectedText = _host.ApplicationReader.ReadTextFile("_platform/", $"{pageName}.{CurrentLang}.html");
+			var mobileSuffix = _host.Mobile ? ".mobile" : String.Empty;
+			String redirectedText = _host.ApplicationReader.ReadTextFile("_platform/", $"{pageName}.{CurrentLang}{mobileSuffix}.html");
 			if (redirectedText == null)
 				return fallback;
 			String text = redirectedText + "\r\n";
@@ -131,7 +121,7 @@ namespace A2v10.Web.Mvc.Controllers
 			Int32 spIndex = text.IndexOfAny(" \n\r<>".ToCharArray(), ix);
 			sb.Append(text.Substring(0, ix));
 			String partialFileName = text.Substring(ix + 13, spIndex - ix - 13);
-			String partialPathText = _host.ApplicationReader.ReadTextFile("_platform/", $"{partialFileName}.{CurrentLang}.html");
+			String partialPathText = _host.ApplicationReader.ReadTextFile("_platform/", $"{partialFileName}.{CurrentLang}{mobileSuffix}.html");
 			sb.Append(partialPathText);
 			sb.Append(text.Substring(spIndex));
 			return sb.ToString();
@@ -151,7 +141,7 @@ namespace A2v10.Web.Mvc.Controllers
 			}
 			Session.Abandon();
 			ClearAllCookies();
-			String page = GetRedirectedPage("login", ResourceHelper.LoginHtml);
+			String page = GetRedirectedPage("login", _host.Mobile ? ResourceHelper.LoginMobileHtml : ResourceHelper.LoginHtml);
 			SendPage(page, ResourceHelper.LoginScript);
 		}
 
@@ -496,7 +486,7 @@ namespace A2v10.Web.Mvc.Controllers
 		[OutputCache(Duration = 0)]
 		public void ForgotPassword()
 		{
-			String page = GetRedirectedPage("forgotpassword", ResourceHelper.ForgotPasswordHtml);
+			String page = GetRedirectedPage("forgotpassword", _host.Mobile ? ResourceHelper.ForgotPasswordMobileHtml  : ResourceHelper.ForgotPasswordHtml);
 			SendPage(page, ResourceHelper.ForgotPasswordScript);
 		}
 

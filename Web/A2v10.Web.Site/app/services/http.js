@@ -1,6 +1,6 @@
 ﻿// Copyright © 2015-2019 Alex Kukhtin. All rights reserved.
 
-// 20190221-7439
+// 20190808-7517
 /* services/http.js */
 
 app.modules['std:http'] = function () {
@@ -53,6 +53,11 @@ app.modules['std:http'] = function () {
 					}
 					else
 						reject(xhr.responseText || xhr.statusText);
+				} else if (xhr.status === 473 /*non standard */) {
+					if (xhr.statusText === 'Unauthorized') {
+						// go to login page
+						window.location.assign('/');
+					}
 				}
 				else
 					reject(xhr.statusText);
@@ -108,6 +113,7 @@ app.modules['std:http'] = function () {
 			fc.__vue__.$destroy();
 		}
 		return new Promise(function (resolve, reject) {
+			eventBus.$emit('beginLoad');
 			doRequest('GET', url)
 				.then(function (html) {
 					if (html.startsWith('<!DOCTYPE')) {
@@ -130,7 +136,10 @@ app.modules['std:http'] = function () {
 						let s = rdoc.scripts[i];
 						if (s.type === 'text/javascript') {
 							let newScript = document.createElement("script");
-							newScript.text = s.text;
+							if (s.src)
+								newScript.src = s.src;
+							else
+								newScript.text = s.text;
 							document.body.appendChild(newScript).parentNode.removeChild(newScript);
 						}
 					}
@@ -147,10 +156,11 @@ app.modules['std:http'] = function () {
 						}
 					}
 					resolve(true);
+					eventBus.$emit('endLoad');
 				})
 				.catch(function (error) {
-					alert(error);
-					resolve(false);
+					reject(error);
+					eventBus.$emit('endLoad');
 				});
 		});
 	}

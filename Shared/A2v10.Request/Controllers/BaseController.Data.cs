@@ -13,6 +13,7 @@ using Newtonsoft.Json.Converters;
 using A2v10.Infrastructure;
 using A2v10.Data.Interfaces;
 using A2v10.Interop.ExportTo;
+using A2v10.Interop;
 
 namespace A2v10.Request
 {
@@ -74,10 +75,31 @@ namespace A2v10.Request
 			setParams?.Invoke(prms);
 			prms.Append(rw.parameters);
 			CheckUserState(prms);
-			IDataModel model = await _dbContext.SaveModelAsync(rw.CurrentSource, rw.UpdateProcedure, data, prms);
+			IDataModel model = null;
+
 			IModelHandler handler = rw.GetHookHandler();
+			String invokeTarget = rw.GetInvokeTarget();
 			if (handler != null)
-				await handler.AfterSave(data, model.Root);
+			{
+				Int64 userId = prms.Get<Int64>("UserId");
+				var handled = await handler.BeforeSave(userId, data);
+				if (!handled)
+				{
+					model = await _dbContext.SaveModelAsync(rw.CurrentSource, rw.UpdateProcedure, data, prms);
+					await handler.AfterSave(userId, data, model.Root);
+				}
+			}
+			else if (invokeTarget != null)
+			{
+				model = await _dbContext.SaveModelAsync(rw.CurrentSource, rw.UpdateProcedure, data, prms);
+				var clr = new ClrInvoker();
+				clr.EnableThrow();
+				clr.Invoke(invokeTarget, prms); // after save
+			}
+			else
+			{
+				model = await _dbContext.SaveModelAsync(rw.CurrentSource, rw.UpdateProcedure, data, prms);
+			}
 			WriteDataModel(model, writer);
 		}
 
@@ -124,6 +146,11 @@ namespace A2v10.Request
 				prms2.Set("Id", rw.Id);
 			}
 			IDataModel model = await _dbContext.LoadModelAsync(rw.CurrentSource, loadProc, prms2);
+			if (rw.HasMerge)
+			{
+				var mergeModel = await _dbContext.LoadModelAsync(rw.MergeSource, rw.MergeLoadProcedure, prms2);
+				model.Merge(mergeModel);
+			}
 			rw = await LoadIndirect(rw, model, loadPrms);
 			WriteDataModel(model, writer);
 		}
@@ -258,7 +285,10 @@ namespace A2v10.Request
 		void WriteDataModel(IDataModel model, TextWriter writer)
 		{
 			// Write data to output
-			writer.Write(JsonConvert.SerializeObject(model.Root, JsonHelpers.StandardSerializerSettings));
+			if (model != null)
+				writer.Write(JsonConvert.SerializeObject(model.Root, JsonHelpers.StandardSerializerSettings));
+			else
+				writer.Write("{}");
 		}
 	}
 }

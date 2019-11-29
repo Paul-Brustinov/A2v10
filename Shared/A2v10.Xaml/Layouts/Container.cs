@@ -12,7 +12,7 @@ namespace A2v10.Xaml
 
 		public Object ItemsSource { get; set; }
 
-		internal virtual void RenderChildren(RenderContext context, Action<TagBuilder> onRenderStatic = null)
+		public virtual void RenderChildren(RenderContext context, Action<TagBuilder> onRenderStatic = null)
 		{
 			var tml = new TagBuilder("template");
 			onRenderStatic?.Invoke(tml);
@@ -28,6 +28,7 @@ namespace A2v10.Xaml
 					{
 						c.RenderElement(context, (tag) =>
 						{
+							onRenderStatic?.Invoke(tag);
 							tag.MergeAttribute(":key", "xIndex");
 						});
 					}
@@ -52,14 +53,14 @@ namespace A2v10.Xaml
 				c.SetParent(this);
 		}
 
-		internal override void OnSetStyles()
+		public override void OnSetStyles()
 		{
 			base.OnSetStyles();
 			foreach (var c in Children)
 				c.OnSetStyles();
 		}
 
-		internal override void OnDispose()
+		public override void OnDispose()
 		{
 			base.OnDispose();
 			foreach (var c in Children)

@@ -1,7 +1,6 @@
 ﻿// Copyright © 2015-2019 Alex Kukhtin. All rights reserved.
 
-// 20190403-7478
-
+/*20191123-7587*/
 // components/selector.js
 
 /*TODO*/
@@ -20,14 +19,16 @@
 	Vue.component('a2-selector', {
 		extends: baseControl,
 		template: `
-<div :class="cssClass2()">
+<div :class="cssClass2()"  :test-id="testId">
 	<label v-if="hasLabel"><span v-text="label"/><slot name="hint"/><slot name="link"></slot></label>
 	<div class="input-group">
-		<input v-focus v-model="query" :class="inputClass" :placeholder="placeholder" :id="testId"
+		<div v-if="isCombo" class="selector-combo" @click.stop.prevent="open"><span tabindex="-1" class="select-text" v-text="valueText" @keydown="keyDown" ref="xcombo"/></div>
+		<input v-focus v-model="query" :class="inputClass" :placeholder="placeholder" v-else
 			@input="debouncedUpdate" @blur.stop="blur" @keydown="keyDown" @keyup="keyUp" ref="input" 
-			:disabled="disabled" />
+			:disabled="disabled" @click="clickInput($event)"/>
 		<slot></slot>
 		<a class="selector-open" href="" @click.stop.prevent="open" v-if="caret"><span class="caret"></span></a>
+		<a class="selector-clear" href="" @click.stop.prevent="clear" v-if="clearVisible">&#x2715</a>
 		<validator :invalid="invalid" :errors="errors" :options="validatorOptions"></validator>
 		<div class="selector-pane" v-if="isOpen" ref="pane" :class="paneClass">
 			<div class="selector-body" :style="bodyStyle">
@@ -51,6 +52,7 @@
 		props: {
 			item: Object,
 			prop: String,
+			itemsSource: Array,
 			textItem: Object,
 			textProp: String,
 			display: String,
@@ -65,7 +67,9 @@
 			listHeight: String,
 			createNew: Function,
 			placement: String,
-			caret: Boolean
+			caret: Boolean,
+			hasClear: Boolean,
+			mode: String
 		},
 		data() {
 			return {
@@ -86,10 +90,20 @@
 					if (el.$isEmpty)
 						return this.textItem[this.textProp];
 				}
-				return utils.simpleEval(this.item[this.prop], this.display);
+				let el = this.item[this.prop];
+				if (utils.isNumber(el) && this.itemsSource) {
+					el = this.itemsSource.find(x => x.$id === el);
+					if (!el) return '';
+				}
+				return utils.simpleEval(el, this.display);
 			},
 			canNew() {
 				return !!this.createNew;
+			},
+			clearVisible() {
+				if (!this.hasClear) return false;
+				let to = this.item[this.prop];
+				return to && utils.isDefined(to) && !to.$isEmpty;
 			},
 			hasText() { return !!this.textProp; },
 			newText() {
@@ -133,6 +147,9 @@
 					this.filter = this.query;
 					this.update();
 				}, delay);
+			},
+			isCombo() {
+				return this.mode === 'combo-box' || this.mode === 'hyperlink';
 			}
 		},
 		watch: {
@@ -157,6 +174,10 @@
 				let cx = this.cssClass();
 				if (this.isOpen || this.isOpenNew)
 					cx += ' open';
+				if (this.mode === 'hyperlink')
+					cx += ' selector-hyperlink';
+				else if (this.mode === 'combo-box')
+					cx += ' selector-combobox';
 				return cx;
 			},
 			isItemActive(ix) {
@@ -179,9 +200,15 @@
 				if (!this.isOpen) {
 					eventBus.$emit('closeAllPopups');
 					this.doFetch(this.valueText, true);
-					let input = this.$refs['input'];
-					if (input)
-						input.focus();
+					if (this.isCombo) {
+						let combo = this.$refs['xcombo'];
+						if (combo)
+							combo.focus();
+					} else {
+						let input = this.$refs['input'];
+						if (input)
+							input.focus();
+					}
 				}
 				this.isOpen = !this.isOpen;
 			},
@@ -199,9 +226,19 @@
 						this.blur();
 				}
 			},
+			clickInput(event) {
+				if (this.caret && !this.isOpen) {
+					event.stopPropagation();
+					event.preventDefault();
+					this.open();
+				}
+			},
 			keyDown(event) {
-				if (!this.isOpen)
+				if (!this.isOpen) {
+					if (event.which === 115)
+						this.open();
 					return;
+				}
 				event.stopPropagation();
 				switch (event.which) {
 					case 27: // esc
@@ -227,6 +264,9 @@
 						this.query = this.itemName(this.items[this.current]);
 						this.scrollIntoView();
 						break;
+					case 115: // F4
+						this.cancel();
+						break;
 					default:
 						return;
 				}
@@ -241,8 +281,10 @@
 						this.hitfunc.call(this.item.$root, itm);
 						return;
 					}
-					if (obj.$merge)
+					if (obj && obj.$merge)
 						obj.$merge(itm, true /*fire*/);
+					else if (utils.isNumber(obj))
+						this.item[this.prop] = itm.$id;
 					else
 						platform.set(this.item, this.prop, itm);
 				});
@@ -278,6 +320,21 @@
 				this.doFetch(text, false);
 			},
 			doFetch(text, all) {
+				if (this.itemsSource) {
+					if (!this.items.length)
+						this.items = this.itemsSource;
+					let fi = -1;
+					let el = this.item[this.prop];
+					if (utils.isNumber(el))
+						fi = this.items.findIndex(x => x.Id === el);
+					else
+						fi = this.items.indexOf(el);
+					if (fi !== -1) {
+						this.current = fi;
+						setTimeout(() => this.scrollIntoView(), 10);
+					}
+					return;
+				}
 				this.loading = true;
 				let fData = this.fetchData(text, all);
 				if (fData.then) {
@@ -300,7 +357,7 @@
 				let elem = this.item[this.prop];
 				if (!('$vm' in elem))
 					elem.$vm = this.$root; // plain object hack
-				return this.fetch.call(elem, elem, text, all);
+				return this.fetch.call(this.item.$root, elem, text, all);
 			},
 			doNew() {
 				//console.dir(this.createNew);

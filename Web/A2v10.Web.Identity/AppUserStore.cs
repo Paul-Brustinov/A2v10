@@ -73,7 +73,7 @@ namespace A2v10.Web.Identity
 				else
 				{
 					var existing = _mapIds[user.Id];
-					if (!Comparer<AppUser>.Equals(user, existing))
+					if (!user.Equals(existing))
 						throw new InvalidProgramException("Invalid user cache");
 				}
 				if (!_mapNames.ContainsKey(user.UserName))
@@ -83,7 +83,7 @@ namespace A2v10.Web.Identity
 				else
 				{
 					var existing = _mapIds[user.Id];
-					if (!Comparer<AppUser>.Equals(user, existing))
+					if (!user.Equals(existing))
 						throw new InvalidProgramException("Invalid user cache");
 				}
 			}
@@ -132,17 +132,21 @@ namespace A2v10.Web.Identity
 			}
 		}
 
-		public Task DeleteAsync(AppUser user)
+		public async Task DeleteAsync(AppUser user)
 		{
-			throw new NotImplementedException();
+			await _dbContext.ExecuteAsync<AppUser>(DataSource, $"[{DbSchema}].[DeleteUser]", user);
 		}
 
 		public async Task<AppUser> FindByIdAsync(Int64 userId)
 		{
+			if (userId == 0)
+				return null;
 			AppUser user = _cache.GetById(userId);
 			if (user != null)
 				return user;
 			user = await _dbContext.LoadAsync<AppUser>(DataSource, $"[{DbSchema}].[FindUserById]", new { Id = userId });
+			if (user == null)
+				return null;
 			CacheUser(user);
 			return user;
 		}
@@ -199,6 +203,7 @@ namespace A2v10.Web.Identity
 		{
 			if (_host.IsMultiTenant)
 			{
+				// with TenantRoles
 				var createdUser = await FindByIdAsync(user.Id);
 				_host.TenantId = createdUser.Tenant;
 				await _dbContext.ExecuteAsync(_host.TenantDataSource, $"[{DbSchema}].[CreateTenantUser]", createdUser);
@@ -478,6 +483,14 @@ namespace A2v10.Web.Identity
 			};
 			if (user.IsAdmin)
 				list.Add(new Claim("Admin", "Admin"));
+			if (_host.IsMultiTenant)
+			{
+				var clientId = user.GetClientId();
+				if (clientId != null)
+					list.Add(new Claim("ClientId", clientId));
+				if (user.IsTenantAdmin)
+					list.Add(new Claim("TenantAdmin", "TenantAdmin"));
+			}
 
 			/*
 			list.Add(new Claim("Locale", user.Locale ?? "uk_UA"));
@@ -523,7 +536,7 @@ namespace A2v10.Web.Identity
 			if (_userRoles != null)
 				return _userRoles;
 			var list = await _dbContext.LoadListAsync<AppRole>(DataSource, $"[{DbSchema}].[GetUserGroups]", new { UserId = user.Id });
-			_userRoles =  list.Select<AppRole, String>(x => x.Name).ToList();
+			_userRoles =  list.Select<AppRole, String>(x => x.Key).ToList();
 			return _userRoles;
 		}
 

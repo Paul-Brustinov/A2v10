@@ -51,7 +51,7 @@ namespace A2v10.Xaml
 
 		#endregion
 
-		internal override void RenderElement(RenderContext context, Action<TagBuilder> onRender = null)
+		public override void RenderElement(RenderContext context, Action<TagBuilder> onRender = null)
 		{
 			/* TODO: 
              * 1. Horizontal splitter
@@ -60,6 +60,7 @@ namespace A2v10.Xaml
 				return;
 			var spl = new TagBuilder("div", "splitter");
 			onRender?.Invoke(spl);
+			spl.MergeAttribute("key", Guid.NewGuid().ToString()); // disable vue reusing
 			MergeAttributes(spl, context);
 			if (Height != null)
 				spl.MergeStyle("height", Height.Value);
@@ -83,6 +84,7 @@ namespace A2v10.Xaml
 
 			new TagBuilder("div", "spl-handle")
 				.MergeAttribute(Orientation == Orientation.Vertical ? "v-resize" : "h-resize", String.Empty)
+				//.MergeAttribute("key", Guid.NewGuid().ToString()) // disable vue reusing
 				.MergeAttribute("first-pane-width", p1w?.Value.ToString())
 				.MergeAttribute("data-min-width", GetMinWidth(Children[0])?.Value.ToString())
 				.MergeAttribute("second-min-width", GetMinWidth(Children[1])?.Value.ToString())

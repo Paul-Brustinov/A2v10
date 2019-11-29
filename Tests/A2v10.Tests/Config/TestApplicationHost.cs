@@ -49,7 +49,7 @@ namespace A2v10.Tests.Config
 			get
 			{
 				// TODO: ???
-				return ConfigurationManager.AppSettings["appKey"];
+				return ConfigurationManager.AppSettings["appKey"] ?? String.Empty;
 
 			}
 		}
@@ -64,8 +64,10 @@ namespace A2v10.Tests.Config
 
 		public String AppDescription => ConfigurationManager.AppSettings["appDescription"];
 		public String AppHost => ConfigurationManager.AppSettings["appHost"];
+		public String UserAppHost => ConfigurationManager.AppSettings["userAppHost"];
 
 		public String SupportEmail => ConfigurationManager.AppSettings["supportEmail"];
+		public String SmtpConfig => ConfigurationManager.AppSettings["mailSettings"];
 
 		public String HostingPath { get; set; }
 
@@ -73,8 +75,12 @@ namespace A2v10.Tests.Config
 		public String HelpUrl => null;
 
 		public Boolean IsMultiTenant => false;
+		public Boolean IsMultiCompany => false;
+		public Boolean IsUsePeriodAndCompanies => false;
 		public Boolean IsRegistrationEnabled => false;
 		public Boolean IsDebugConfiguration => true;
+		public Boolean IsDTCEnabled => false;
+		public Boolean IsAdminAppPresent => false;
 
 		public Int32? TenantId { get; set; }
 		public String CatalogDataSource => null;
@@ -96,8 +102,7 @@ namespace A2v10.Tests.Config
 
 		public String GetAppSettings(String source)
 		{
-			throw new NotImplementedException("BackgroundApplicationHost.GetAppSettings");
+			return source;
 		}
-
 	}
 }

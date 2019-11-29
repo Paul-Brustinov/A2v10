@@ -70,7 +70,7 @@ namespace A2v10.Xaml
 			set { _groupBy = value; }
 		}
 
-		internal override void RenderElement(RenderContext context, Action<TagBuilder> onRender = null)
+		public override void RenderElement(RenderContext context, Action<TagBuilder> onRender = null)
 		{
 			if (SkipRender(context))
 				return;
@@ -158,6 +158,7 @@ namespace A2v10.Xaml
 			}
 			RenderRowDetails(context);
 			RenderEmptyPanel(context);
+			RenderFooter(context);
 			dataGrid.RenderEnd(context);
 		}
 
@@ -188,6 +189,20 @@ namespace A2v10.Xaml
 			panel.RenderEnd(context);
 		}
 
+		void RenderFooter(RenderContext context)
+		{
+			/*TODO: do it!
+			var templ = new TagBuilder("template");
+			templ.MergeAttribute("slot", "footer");
+			templ.RenderStart(context);
+			var tfoot = new TagBuilder("tfoot");
+			tfoot.RenderStart(context);
+			context.Writer.Write("<tr><td colspan=\"3\">11</td><td>22</td><td>33</td></tr>");
+			tfoot.RenderEnd(context);
+			templ.RenderEnd(context);
+			*/
+		}
+
 		protected override void OnEndInit()
 		{
 			base.OnEndInit();
@@ -195,7 +210,7 @@ namespace A2v10.Xaml
 				col.SetParent(this);
 		}
 
-		internal override void OnSetStyles()
+		public override void OnSetStyles()
 		{
 			base.OnSetStyles();
 			foreach (var col in Columns)

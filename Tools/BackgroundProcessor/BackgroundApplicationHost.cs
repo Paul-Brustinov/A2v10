@@ -4,6 +4,7 @@ using System;
 using System.Configuration;
 using System.IO;
 using System.Threading.Tasks;
+
 using A2v10.Data.Interfaces;
 using A2v10.Infrastructure;
 
@@ -23,8 +24,10 @@ namespace BackgroundProcessor
 		public Boolean Mobile { get; set; }
 
 		public String AppPath => ConfigurationManager.AppSettings["appPath"];
-		public String AppKey => ConfigurationManager.AppSettings["appKey"];
+		public String AppKey => ConfigurationManager.AppSettings["appKey"] ?? String.Empty;
 		public String AppHost => ConfigurationManager.AppSettings["appHost"];
+		public String UserAppHost => ConfigurationManager.AppSettings["userAppHost"];
+		public String SmtpConfig => ConfigurationManager.AppSettings["mailSettings"];
 		public String AppDescription => throw new NotImplementedException(nameof(AppDescription));
 		public String SupportEmail => throw new NotImplementedException(nameof(SupportEmail));
 		public String Theme => throw new NotImplementedException(nameof(Theme));
@@ -43,8 +46,12 @@ namespace BackgroundProcessor
 		}
 
 		public Boolean IsRegistrationEnabled => throw new NotImplementedException(nameof(IsRegistrationEnabled));
+		public Boolean IsDTCEnabled =>  throw new NotImplementedException(nameof(IsDTCEnabled));
+		public Boolean IsAdminAppPresent => throw new NotImplementedException(nameof(IsAdminAppPresent));
 		public String UseClaims => throw new NotImplementedException(nameof(UseClaims));
 		public Boolean IsMultiTenant => throw new NotImplementedException(nameof(IsMultiTenant));
+		public Boolean IsUsePeriodAndCompanies => throw new NotImplementedException(nameof(IsUsePeriodAndCompanies));
+		public Boolean IsMultiCompany => false;
 		public Int32? TenantId { get => throw new NotImplementedException(); set => throw new InvalidOperationException(nameof(TenantId)); }
 		public String CatalogDataSource => throw new NotImplementedException(nameof(CatalogDataSource));
 		public String TenantDataSource => throw new NotImplementedException(nameof(TenantDataSource));
@@ -69,7 +76,10 @@ namespace BackgroundProcessor
 			if (AppPath.StartsWith("db:"))
 				_reader = new DbApplicationReader(AppPath);
 			else
-				throw new NotImplementedException($"StartApplication error. AppPath must start with 'db:' ({AppPath})");
+			{
+				String key = adminMode ? "admin" : AppKey;
+				_reader = new FileApplicationReader(AppPath, key);
+			}
 		}
 
 		public IApplicationReader ApplicationReader => _reader;

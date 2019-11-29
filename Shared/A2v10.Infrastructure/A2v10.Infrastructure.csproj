@@ -33,18 +33,23 @@
     <Reference Include="System" />
     <Reference Include="System.Core" />
     <Reference Include="System.Data" />
+    <Reference Include="System.IO.Compression" />
+    <Reference Include="System.IO.Compression.FileSystem" />
     <Reference Include="System.ValueTuple, Version=4.0.3.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51, processorArchitecture=MSIL">
       <HintPath>..\..\packages\System.ValueTuple.4.5.0\lib\net461\System.ValueTuple.dll</HintPath>
     </Reference>
   </ItemGroup>
   <ItemGroup>
     <Compile Include="AppInfo.cs" />
+    <Compile Include="AppReader\FileApplicationReader.cs" />
+    <Compile Include="AppReader\ZipApplicationReader.cs" />
     <Compile Include="BaseLocalizer.cs" />
     <Compile Include="ClrHelpers.cs" />
     <Compile Include="CollectionHelpers.cs" />
     <Compile Include="DynamicHelpers.cs" />
     <Compile Include="Exceptions.cs" />
     <Compile Include="IApplicationReader.cs" />
+    <Compile Include="ILicenseManager.cs" />
     <Compile Include="Implementation\NullMessaging.cs" />
     <Compile Include="IQueuedMessage.cs" />
     <Compile Include="IBackgroundProcessing.cs" />
@@ -61,7 +66,6 @@
     <Compile Include="ISmsService.cs" />
     <Compile Include="IUserId.cs" />
     <Compile Include="IUserStateManager.cs" />
-    <Compile Include="Permissions.cs" />
     <Compile Include="IApplicationHost.cs" />
     <Compile Include="ILocalizer.cs" />
     <Compile Include="IMessage.cs" />

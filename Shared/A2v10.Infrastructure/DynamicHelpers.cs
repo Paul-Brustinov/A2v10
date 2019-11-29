@@ -47,6 +47,14 @@ namespace A2v10.Infrastructure
 				d.Add(name, value);
 		}
 
+		public static void SetIfNotExists(this ExpandoObject obj, String name, Object value)
+		{
+			if (!(obj is IDictionary<String, Object> d))
+				return;
+			if (!d.ContainsKey(name))
+				d.Add(name, value);
+		}
+
 		public static void RemoveKeys(this ExpandoObject obj, String keys)
 		{
 			if (!(obj is IDictionary<String, Object> d))
@@ -246,6 +254,16 @@ namespace A2v10.Infrastructure
 			eo.Append(other);
 			return eo;
 		}
+
+		public static void AddNameValue(this List<ExpandoObject> coll, String name, Object value)
+		{
+			if (value == null) return;
+			var nvObj = new ExpandoObject();
+			nvObj.Set("Name", name);
+			nvObj.Set("Value", value);
+			coll.Add(nvObj);
+		}
+
 
 		public static Boolean IsNullableType(this Type type)
 		{

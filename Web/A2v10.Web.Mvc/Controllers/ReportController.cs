@@ -6,7 +6,6 @@ using System.Threading.Tasks;
 using System.Dynamic;
 using System.IO;
 using System.Text;
-using System.Configuration;
 using System.Threading;
 using System.Web.Mvc;
 
@@ -23,6 +22,8 @@ using A2v10.Reports;
 using A2v10.Web.Mvc.Filters;
 using A2v10.Web.Identity;
 using A2v10.Interop;
+using System.Web;
+using System.Net.Http.Headers;
 
 namespace A2v10.Web.Mvc.Controllers
 {
@@ -36,10 +37,22 @@ namespace A2v10.Web.Mvc.Controllers
 		}
 	}
 
+	public class DesktopReport
+	{
+		public String Base;
+		public String Report;
+		public String Id;
+		public String Format;
+		public Int64 UserId;
+		public Int32 TenantId;
+		public Int64 CompanyId;
+		public Boolean AddContentDisposition;
+	}
+
 	[Authorize]
 	[ExecutingFilter]
 	[CheckMobileFilter]
-	public class ReportController : Controller
+	public class ReportController : Controller, IControllerProfiler
 	{
 		A2v10.Request.BaseController _baseController = new BaseController();
 		ReportHelper _reportHelper = new ReportHelper();
@@ -51,6 +64,19 @@ namespace A2v10.Web.Mvc.Controllers
 
 		public Int64 UserId => User.Identity.GetUserId<Int64>();
 		public Int32 TenantId => User.Identity.GetUserTenantId();
+		public Int64 CompanyId => _baseController.UserStateManager.UserCompanyId(TenantId, UserId);
+		public IProfiler Profiler => _baseController.Host.Profiler;
+
+		readonly static String[] _internalActions = new String[] { /*"GetReport", for profile query*/ "ViewerEvent", "PrintReport", "ExportReport", "Interaction" };
+
+		public Boolean SkipRequest(String Url)
+		{
+			foreach (var a in _internalActions) {
+				if (Url.Contains($"/{a}/"))
+					return true;
+			}
+			return false;
+		}
 
 		[HttpGet]
 		public async Task Show(String Base, String Rep, String id)
@@ -62,10 +88,14 @@ namespace A2v10.Web.Mvc.Controllers
 				RequestModel rm = await RequestModel.CreateFromBaseUrl(_baseController.Host, false, url);
 				var rep = rm.GetReport();
 
-				var view = new EmptyView();
-				var vc = new ViewContext(ControllerContext, view, ViewData, TempData, Response.Output);
-				var hh = new HtmlHelper(vc, view);
-				var result = hh.Stimulsoft().StiMvcViewer("A2v10StiMvcViewer", ViewerOptions);
+				MvcHtmlString result = null;
+				using (var pr = Profiler.CurrentRequest.Start(ProfileAction.Report, $"render: {Rep}"))
+				{
+					var view = new EmptyView();
+					var vc = new ViewContext(ControllerContext, view, ViewData, TempData, Response.Output);
+					var hh = new HtmlHelper(vc, view);
+					result = hh.Stimulsoft().StiMvcViewer("A2v10StiMvcViewer", ViewerOptions);
+				}
 
 				var sb = new StringBuilder(ResourceHelper.StiReportHtml);
 				sb.Replace("$(StiReport)", result.ToHtmlString());
@@ -87,19 +117,81 @@ namespace A2v10.Web.Mvc.Controllers
 			var rc = new ReportContext()
 			{
 				UserId = UserId,
-				TenantId = TenantId
+				TenantId = TenantId,
 			};
+			if (_baseController.Host.IsMultiCompany)
+				rc.CompanyId = CompanyId;
 			return await _reportHelper.GetReportInfo(rc, url, id, prms);
+		}
+
+		async Task<ReportInfo> GetReportInfoDesktop(DesktopReport dr, String url, ExpandoObject prms)
+		{
+			var rc = new ReportContext()
+			{
+				UserId = dr.UserId,
+				TenantId = dr.TenantId,
+			};
+			if (_baseController.Host.IsMultiCompany)
+				rc.CompanyId = dr.CompanyId;
+			return await _reportHelper.GetReportInfo(rc, url, dr.Id, prms);
 		}
 
 		ExpandoObject CreateParamsFromQueryString()
 		{
 			var eo = new ExpandoObject();
+			if (Request == null)
+				return eo;
 			if (Request.QueryString.Count == 0)
 				return eo;
 			eo.Append(_baseController.CheckPeriod(Request.QueryString), toPascalCase: true);
 			eo.RemoveKeys("rep,Rep,base,Base,Format,format");
 			return eo;
+		}
+
+		public async Task ExportDesktop(DesktopReport rep, HttpResponseBase response)
+		{
+			// TODO: query string ???
+			_reportHelper.SetupLicense();
+			try
+			{
+				using (var rr = Profiler.CurrentRequest.Start(ProfileAction.Report, $"export: {rep.Report}"))
+				{
+					var url = $"/_report/{rep.Base.RemoveHeadSlash()}/{rep.Report}/{rep.Id}";
+					ReportInfo ri = await GetReportInfoDesktop(rep, url, CreateParamsFromQueryString());
+					ExportReportResult err = null;
+					switch (ri.Type)
+					{
+						case RequestReportType.stimulsoft:
+							err = _reportHelper.ExportStiReportStream(ri, rep.Format, response.OutputStream);
+							break;
+						case RequestReportType.xml:
+							throw new NotImplementedException();
+						case RequestReportType.json:
+							throw new NotImplementedException();
+					}
+					if (err != null)
+					{
+						response.ContentType = err.ContentType;
+						if (rep.AddContentDisposition)
+						{
+							var cdh = new ContentDispositionHeaderValue("attachment")
+							{
+								FileNameStar = $"{_baseController.Localize(ri.Name)}.{err.Extension}"
+							};
+							response.Headers.Add("Content-Disposition", cdh.ToString());
+						}
+					}
+
+				}
+			}
+			catch (Exception ex)
+			{
+				response.ContentType = "text/html";
+				response.ContentEncoding = Encoding.UTF8;
+				if (ex.InnerException != null)
+					ex = ex.InnerException;
+				response.Write(ex.Message);
+			}
 		}
 
 		[HttpGet]
@@ -109,16 +201,20 @@ namespace A2v10.Web.Mvc.Controllers
 			_reportHelper.SetupLicense();
 			try
 			{
-				var url = $"/_report/{Base.RemoveHeadSlash()}/{Rep}/{id}";
-				ReportInfo ri = await GetReportInfo(url, id, CreateParamsFromQueryString());
+				using (var rr = Profiler.CurrentRequest.Start(ProfileAction.Report, $"export: {Rep}"))
+				{
+					var url = $"/_report/{Base.RemoveHeadSlash()}/{Rep}/{id}";
+					ReportInfo ri = await GetReportInfo(url, id, CreateParamsFromQueryString());
 
-				switch (ri.Type) {
-					case RequestReportType.stimulsoft:
-						return _reportHelper.ExportStiReport(ri, Format, saveFile:true);
-					case RequestReportType.xml:
-						return ExportXmlReport(ri);
-					case RequestReportType.json:
-						return ExportJsonReport(ri);
+					switch (ri.Type)
+					{
+						case RequestReportType.stimulsoft:
+							return _reportHelper.ExportStiReport(ri, Format, saveFile: true);
+						case RequestReportType.xml:
+							return ExportXmlReport(ri);
+						case RequestReportType.json:
+							return ExportJsonReport(ri);
+					}
 				}
 			}
 			catch (Exception ex)
@@ -259,7 +355,7 @@ namespace A2v10.Web.Mvc.Controllers
 				if (ri == null)
 					throw new InvalidProgramException("invalid data");
 				var path = ri.ReportPath;
-				using (var stream = _baseController.Host.ApplicationReader.FileStreamFullPath(path))
+				using (var stream = _baseController.Host.ApplicationReader.FileStreamFullPathRO(path))
 				{
 					var r = StiReportExtensions.CreateReport(stream, ri.Name);
 					r.AddDataModel(ri.DataModel);

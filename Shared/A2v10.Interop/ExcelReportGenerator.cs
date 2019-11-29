@@ -1,4 +1,4 @@
-﻿// Copyright © 2015-2018 Alex Kukhtin. All rights reserved.
+﻿// Copyright © 2015-2019 Alex Kukhtin. All rights reserved.
 
 using System;
 using System.Collections.Generic;
@@ -19,6 +19,7 @@ namespace A2v10.Interop
 		internal IList<Row> RowsForClone;
 		internal UInt32 FirstRow;
 		internal UInt32 RowCount;
+		internal UInt32 LastRow;
 	}
 
 	class SharedStringDef
@@ -34,17 +35,19 @@ namespace A2v10.Interop
 			iIndex = ix;
 		}
 
-		internal void Parse()
+		internal Boolean Parse()
 		{
 			if (bParsed)
-				return;
+				return true;
 
 			String str = Item.Text.Text;
 			if (str.StartsWith("{") && str.EndsWith("}"))
 			{
 				Expression = str.Substring(1, str.Length - 2);
+				bParsed = true;
+				return true;
 			}
-			bParsed = true;
+			return false;
 		}
 	}
 
@@ -88,6 +91,11 @@ namespace A2v10.Interop
 				if (_resultFile != null)
 					File.Delete(_resultFile);
 				_resultFile = null;
+				if (_templateStream != null)
+				{
+					_templateStream.Close();
+					_templateStream.Dispose();
+				}
 			}
 		}
 
@@ -118,7 +126,7 @@ namespace A2v10.Interop
 				_sheetData = workSheet.GetFirstChild<SheetData>();
 
 				var workBook = doc.WorkbookPart.Workbook;
-				var defName = workBook.DefinedNames.FirstChild;
+				var defName = workBook?.DefinedNames?.FirstChild;
 				while (defName != null)
 				{
 					if (defName is DefinedName dn)
@@ -138,7 +146,10 @@ namespace A2v10.Interop
 			finally
 			{
 				if (doc != null)
+				{
 					doc.Close();
+					doc.Dispose();
+				}
 			}
 			_resultFile = tempFileName;
 		}
@@ -177,8 +188,8 @@ namespace A2v10.Interop
 			Int32 colonPos = shtRef.IndexOf(':');
 			if (colonPos == -1)
 				return;
-			String startRef = shtRef.Substring(0, colonPos); // ссылка на первую строку дипазона
-			String endRef = shtRef.Substring(colonPos + 1);  // ссылка на вторую строку диапазона
+			String startRef = shtRef.Substring(0, colonPos); // link to the first line of the range
+			String endRef = shtRef.Substring(colonPos + 1);  // link to the second line of the range
 			if (startRef.Length < 2)
 				return;
 			if (endRef.Length < 2)
@@ -200,6 +211,7 @@ namespace A2v10.Interop
 			RowSetDef rd = new RowSetDef
 			{
 				FirstRow = startRow,
+				LastRow = endRow,
 				RowCount = endRow - startRow + 1
 			};
 			_dataSetRows.Add(propName, rd);
@@ -211,8 +223,37 @@ namespace A2v10.Interop
 		{
 			_sharedStringCount = _sharedStringTable.Elements<SharedStringItem>().Count<SharedStringItem>();
 
+			ProcessPlainTable();
+
 			if (_dataSetRows != null)
 				ProcessDataSets();
+		}
+
+		Boolean IsRowInRange(UInt32 rowIndex)
+		{
+			if (_dataSetRows == null)
+				return false;
+			foreach (var rd in _dataSetRows)
+			{
+				var rdv = rd.Value;
+				if (rowIndex >= rdv.FirstRow && rowIndex <= rdv.LastRow)
+					return true;
+			}
+			return false;
+		}
+
+		void ProcessPlainTable()
+		{
+			var rows = _sheetData.Elements<Row>();
+			foreach (var row in rows)
+			{
+				if (IsRowInRange(row.RowIndex))
+					return;
+				foreach (var cell in row.Elements<Cell>())
+				{
+					SetCellData(cell, _dataModel.Root);
+				}
+			}
 		}
 
 		void ProcessDataSets()
@@ -238,7 +279,7 @@ namespace A2v10.Interop
 
 		void SetRecordData(RowSetDef def, ExpandoObject data)
 		{
-			// Пока просто индекс
+			// just an index (for now)
 			foreach (var r in def.Rows)
 			{
 				foreach (var c in r.Elements<Cell>())
@@ -257,7 +298,7 @@ namespace A2v10.Interop
 			if (_sharedStringIndexMap == null)
 				return;
 			String addr = cell.CellValue.Text.ToString();
-			// это номер строки из SharedStrings
+			// this is the line number from SharedStrings
 			if (!Int32.TryParse(addr, out Int32 strIndex))
 				return;
 			if (!_sharedStringIndexMap.ContainsKey(strIndex))
@@ -265,9 +306,11 @@ namespace A2v10.Interop
 			SharedStringDef ssd = _sharedStringIndexMap[strIndex];
 			if (ssd == null)
 				return;
-			ssd.Parse();
-			Object dat = _dataModel.Eval<Object>(data, ssd.Expression);
-			SetCellValueData(cell, dat);
+			if (ssd.Parse())
+			{
+				Object dat = _dataModel.Eval<Object>(data, ssd.Expression);
+				SetCellValueData(cell, dat);
+			}
 		}
 
 		void SetCellValueData(Cell cell, Object obj)
@@ -325,6 +368,11 @@ namespace A2v10.Interop
 				cell.DataType = CellValues.Number;
 				cell.CellValue = new CellValue(((Int16)obj).ToString());
 			}
+			else if (obj is Boolean)
+			{
+				cell.DataType = CellValues.Boolean;
+				cell.CellValue = new CellValue(((Boolean)obj).ToString());
+			}
 		}
 
 		String NewSharedString(String Value)
@@ -349,16 +397,16 @@ namespace A2v10.Interop
 				for (Int32 i = 0; i < rd.RowCount; i++)
 				{
 					rd.Rows.Add(row);
-					rd.RowsForClone.Add(row.Clone() as Row); // и для клонирования тоже!
+					rd.RowsForClone.Add(row.Clone() as Row); // and for cloning too!
 					row = row.NextSibling<Row>();
 					lastRow = row;
 				}
 			}
 			else
 			{
-				// Строка уже была, нужно ее клонировать и вставить ниже
+				// The line was already there, you need to clone it and insert it below
 				lastRow = rd.Rows[rd.Rows.Count - 1];
-				// индекс следующей вставляемой строки
+				// next row index
 				UInt32 nri = rd.Rows[0].RowIndex.Value + rd.RowCount;
 				for (Int32 i = 0; i < rd.Rows.Count; i++)
 				{
@@ -367,9 +415,9 @@ namespace A2v10.Interop
 					nr.RowIndex = nri++;
 					CorrectCellAddresses(nr);
 					_sheetData.InsertAfter<Row>(nr, lastRow);
-					count++; // вставили строку
-					rd.Rows[i] = nr; // Для следующей вставки делаем
-					lastRow = nr; // последняя уже вставлена
+					count++;
+					rd.Rows[i] = nr;
+					lastRow = nr; // the last one is already inserted
 				}
 			}
 			return lastRow;
@@ -380,7 +428,9 @@ namespace A2v10.Interop
 			foreach (var c in row.ChildElements)
 			{
 				var clch = c as Cell;
-				clch.CellReference = clch.CellReference.ToString()[0] + row.RowIndex.ToString();
+				var cr = clch.CellReference.ToString();
+				var crn = new String(cr.Where(Char.IsLetter).ToArray());
+				clch.CellReference = crn + row.RowIndex.ToString();
 			}
 		}
 	}

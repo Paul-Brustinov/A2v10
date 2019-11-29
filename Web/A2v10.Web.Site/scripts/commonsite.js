@@ -1,6 +1,6 @@
 // Copyright © 2015-2019 Alex Kukhtin. All rights reserved.
 
-// 20190226-7444
+// 20190813-7521
 // app.js
 
 "use strict";
@@ -15,6 +15,9 @@
 
 	window.require = require;
 	window.component = component;
+
+	// amd typescript support
+	window.define = define;
 
 	let rootElem = document.querySelector('meta[name=rootUrl]');
 	window.$$rootUrl = rootElem ? rootElem.content || '' : '';
@@ -46,6 +49,15 @@
 	function nextToken() {
 		return '' + currentToken++;
 	}
+
+	function define(args, factory) {
+		let exports = {
+			default: undefined
+		};
+		factory(require, exports);
+		return exports.default;
+	}
+
 })();
 // Copyright © 2015-2018 Alex Kukhtin. All rights reserved.
 
@@ -77,10 +89,16 @@
 		if (!pElem)
 			return;
 		let parentRect = pElem.getBoundingClientRect();
-		if (elRect.top < parentRect.top)
-			el.scrollIntoView(true);
-		else if (elRect.bottom > parentRect.bottom)
-			el.scrollIntoView(false);
+		if (elRect.top < parentRect.top) {
+			//pElem.scrollTop -= parentRect.top - elRect.top + 1;
+			//el.scrollIntoView(true);
+			el.scrollIntoView({ block: 'nearest' });
+		}
+		else if (elRect.bottom > parentRect.bottom) {
+			//pElem.scrollTop += elRect.bottom - parentRect.bottom + 1;
+			el.scrollIntoView({ block: 'nearest' });
+			//el.scrollIntoView(false);
+		}
 	};
 
 
@@ -128,7 +146,7 @@
 
 // Copyright © 2015-2019 Alex Kukhtin. All rights reserved.
 
-// 20190414-7485
+// 20191017-7568
 // services/utils.js
 
 app.modules['std:utils'] = function () {
@@ -147,6 +165,8 @@ app.modules['std:utils'] = function () {
 
 	const currencyFormat = new Intl.NumberFormat(numLocale, { minimumFractionDigits: 2, maximumFractionDigits: 6, useGrouping: true }).format;
 	const numberFormat = new Intl.NumberFormat(numLocale, { minimumFractionDigits: 0, maximumFractionDigits: 6, useGrouping: true }).format;
+
+	const utcdatRegEx = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/;
 
 	let numFormatCache = {};
 
@@ -193,7 +213,8 @@ app.modules['std:utils'] = function () {
 			endOfMonth: endOfMonth,
 			minDate: dateCreate(1901, 1, 1),
 			maxDate: dateCreate(2999, 12, 31),
-			fromDays: fromDays
+			fromDays: fromDays,
+			parseTime: timeParse
 		},
 		text: {
 			contains: textContains,
@@ -274,7 +295,7 @@ app.modules['std:utils'] = function () {
 			return '';
 		else if (isObject(obj))
 			return toJson(obj);
-		return obj + '';
+		return '' + obj;
 	}
 
 	function defaultValue(type) {
@@ -394,11 +415,13 @@ app.modules['std:utils'] = function () {
 				if (dateIsZero(obj))
 					return '';
 				return formatDate(obj);
-			case "DateUrl":
+			case 'DateUrl':
 				if (dateIsZero(obj))
 					return '';
+				if (dateHasTime(obj))
+					return obj.toISOString();
 				return '' + obj.getFullYear() + pad2(obj.getMonth() + 1) + pad2(obj.getDate());
-			case "Time":
+			case 'Time':
 				if (!isDate(obj)) {
 					console.error(`Invalid Date for utils.format (${obj})`);
 					return obj;
@@ -406,13 +429,13 @@ app.modules['std:utils'] = function () {
 				if (dateIsZero(obj))
 					return '';
 				return formatTime(obj);
-			case "Period":
+			case 'Period':
 				if (!obj.format) {
 					console.error(`Invalid Period for utils.format (${obj})`);
 					return obj;
 				}
 				return obj.format('Date');
-			case "Currency":
+			case 'Currency':
 				if (!isNumber(obj)) {
 					obj = toNumber(obj);
 					//TODO:check console.error(`Invalid Currency for utils.format (${obj})`);
@@ -423,7 +446,7 @@ app.modules['std:utils'] = function () {
 				if (opts.format)
 					return formatNumber(obj, opts.format);
 				return currencyFormat(obj);
-			case "Number":
+			case 'Number':
 				if (!isNumber(obj)) {
 					obj = toNumber(obj);
 					//TODO:check console.error(`Invalid Number for utils.format (${obj})`);
@@ -505,8 +528,24 @@ app.modules['std:utils'] = function () {
 		}
 	}
 
+	function timeParse(str) {
+		str = str || '';
+		if (!str) return dateZero();
+		let seg = str.split(/[^\d]/).filter(x => x);
+		if (seg.length === 1) {
+			seg.push('0');
+		}
+		let h = Math.min(+seg[0], 23);
+		let m = Math.min(+seg[1], 59);
+		let td = new Date(0, 0, 1, h, m, 0, 0);
+		return td;
+	}
+
 	function dateParse(str) {
 		str = str || '';
+		if (utcdatRegEx.test(str)) {
+			return new Date(str);
+		}
 		if (!str) return dateZero();
 		let today = dateToday();
 		let seg = str.split(/[^\d]/).filter(x => x);
@@ -541,6 +580,11 @@ app.modules['std:utils'] = function () {
 	function dateIsZero(d1) {
 		if (!isDate(d1)) return false;
 		return dateEqual(d1, dateZero());
+	}
+
+	function dateHasTime(d1) {
+		if (!isDate(d1)) return false;
+		return d1.getUTCHours() !== 0 || d1.getUTCMinutes() !== 0 && d1.getUTCSeconds() !== 0;
 	}
 
 	function endOfMonth(dt) {
@@ -582,9 +626,11 @@ app.modules['std:utils'] = function () {
 				let du = 1000 * 60 * 60 * 24;
 				return Math.floor((d2 - d1) / du);
 			case "year":
-			case 'year':
 				var dd = new Date(d1.getFullYear(), d2.getMonth(), d2.getDate(), d2.getHours(), d2.getMinutes(), d2.getSeconds(), d2.getMilliseconds());
-				return d2.getFullYear() - d1.getFullYear() + (dd < d1 ? (d2 > d1 ? -1 : 0) : (d2 < d1 ? 1 : 0));
+				let dy = dd < d1 ?
+					d2 > d1 ? -1 : 0 :
+					d2 < d1 ? 1  : 0;
+				return d2.getFullYear() - d1.getFullYear() + dy;
 		}
 		throw new Error('Invalid unit value for utils.date.diff');
 	}
@@ -954,7 +1000,7 @@ app.modules['std:url'] = function () {
 
 // Copyright © 2015-2019 Alex Kukhtin. All rights reserved.
 
-// 20190223-7441
+/*20191101-7575*/
 // services/period.js
 
 app.modules['std:period'] = function () {
@@ -1058,7 +1104,7 @@ app.modules['std:period'] = function () {
 			}
 		}
 		if (showCustom)
-			return 'Довільно';
+			return locale.$CustomPeriod;
 		let from = this.From;
 		let to = this.To;
 		return utils.format(from, 'Date') + ' - ' + (utils.format(to, 'Date') || '???');
@@ -1083,6 +1129,9 @@ app.modules['std:period'] = function () {
 		return this.normalize();
 	};
 
+	TPeriod.prototype.toJson = function () {
+		return JSON.stringify(this);
+	};
 
 	
 	return {
@@ -1290,7 +1339,7 @@ app.modules['std:modelInfo'] = function () {
 
 // Copyright © 2015-2019 Alex Kukhtin. All rights reserved.
 
-// 20190221-7439
+// 20190808-7517
 /* services/http.js */
 
 app.modules['std:http'] = function () {
@@ -1343,6 +1392,11 @@ app.modules['std:http'] = function () {
 					}
 					else
 						reject(xhr.responseText || xhr.statusText);
+				} else if (xhr.status === 473 /*non standard */) {
+					if (xhr.statusText === 'Unauthorized') {
+						// go to login page
+						window.location.assign('/');
+					}
 				}
 				else
 					reject(xhr.statusText);
@@ -1398,6 +1452,7 @@ app.modules['std:http'] = function () {
 			fc.__vue__.$destroy();
 		}
 		return new Promise(function (resolve, reject) {
+			eventBus.$emit('beginLoad');
 			doRequest('GET', url)
 				.then(function (html) {
 					if (html.startsWith('<!DOCTYPE')) {
@@ -1420,7 +1475,10 @@ app.modules['std:http'] = function () {
 						let s = rdoc.scripts[i];
 						if (s.type === 'text/javascript') {
 							let newScript = document.createElement("script");
-							newScript.text = s.text;
+							if (s.src)
+								newScript.src = s.src;
+							else
+								newScript.text = s.text;
 							document.body.appendChild(newScript).parentNode.removeChild(newScript);
 						}
 					}
@@ -1437,10 +1495,11 @@ app.modules['std:http'] = function () {
 						}
 					}
 					resolve(true);
+					eventBus.$emit('endLoad');
 				})
 				.catch(function (error) {
-					alert(error);
-					resolve(false);
+					reject(error);
+					eventBus.$emit('endLoad');
 				});
 		});
 	}
@@ -1546,9 +1605,9 @@ app.modules['std:log'] = function () {
 	}
 };
 
-// Copyright © 2015-2018 Alex Kukhtin. All rights reserved.
+// Copyright © 2015-2019 Alex Kukhtin. All rights reserved.
 
-/*20180705-7241*/
+/*20191122-7587*/
 /*validators.js*/
 
 app.modules['std:validators'] = function () {
@@ -1569,15 +1628,21 @@ app.modules['std:validators'] = function () {
 	};
 
 	function validateStd(rule, val) {
-		switch (rule) {
+		switch (rule.valid) {
 			case 'notBlank':
 				return utils.notBlank(val);
 			case "email":
-				return validEmail(val);
+				return val === '' || EMAIL_REGEXP.test(val);
 			case "url":
-				return validUrl(val);
+				return val === '' || URL_REGEXP.test(val);
 			case "isTrue":
 				return val === true;
+			case "regExp":
+				if (!(rule.regExp instanceof RegExp)) {
+					console.error('rule.regExp is undefined or is not an regular expression');
+					return false;
+				}
+				return val === '' || rule.regExp.test(val);
 		}
 		console.error(`invalid std rule: '${rule}'`);
 		return true;
@@ -1619,7 +1684,7 @@ app.modules['std:validators'] = function () {
 				if (!rule.applyIf(item, val)) return;
 			}
 			if (utils.isString(rule)) {
-				if (!validateStd('notBlank', val))
+				if (!validateStd({ valid: 'notBlank' }, val))
 					retval.push({ msg: rule, severity: ERROR });
 			} else if (utils.isFunction(rule)) {
 				let vr = rule(item, val);
@@ -1629,7 +1694,7 @@ app.modules['std:validators'] = function () {
 					retval.push({ msg: vr.msg, severity: vr.severity || sev });
 				}
 			} else if (utils.isString(rule.valid)) {
-				if (!validateStd(rule.valid, val))
+				if (!validateStd(rule, val))
 					retval.push({ msg: rule.msg, severity: sev });
 			} else if (utils.isFunction(rule.valid)) {
 				if (rule.async) {
@@ -1709,15 +1774,6 @@ app.modules['std:validators'] = function () {
 			arr.push({ valid: 'notBlank', msg: rules });
 		let err = validateImpl(arr, item, val, du);
 		return err; // always array. may be defer
-	}
-
-
-	function validEmail(addr) {
-		return addr === '' || EMAIL_REGEXP.test(addr);
-	}
-
-	function validUrl(url) {
-		return url === '' || URL_REGEXP.test(url);
 	}
 };
 
@@ -2186,7 +2242,7 @@ Vue.component('a2-pager', {
 
 /* Copyright © 2015-2019 Alex Kukhtin. All rights reserved.*/
 
-// 20190412-7483
+/*20181101-7576*/
 // services/datamodel.js
 
 (function () {
@@ -2205,6 +2261,9 @@ Vue.component('a2-pager', {
 	const FLAG_VIEW = 1;
 	const FLAG_EDIT = 2;
 	const FLAG_DELETE = 4;
+	const FLAG_APPLY = 8;
+	const FLAG_UNAPPLY = 16;
+
 	const DEFAULT_PAGE_SIZE = 20;
 
 	const platform = require('std:platform');
@@ -2253,9 +2312,12 @@ Vue.component('a2-pager', {
 	function ensureType(type, val) {
 		if (!utils.isDefined(val))
 			val = utils.defaultValue(type);
-		if (type === Number) {
+		if (type === Number)
 			return utils.toNumber(val);
-		}
+		else if (type === String)
+			return utils.toString(val);
+		else if (type === Date && !utils.isDate(val))
+			return utils.date.parse('' + val);
 		return val;
 	}
 
@@ -2319,8 +2381,14 @@ Vue.component('a2-pager', {
 				let eventWasFired = false;
 				let skipDirty = prop.startsWith('$$');
 				let ctor = this._meta_.props[prop];
-				if (ctor.type) ctor = ctor.type;
-				val = ensureType(ctor, val);
+				let isjson = false;
+				if (ctor.type) {
+					isjson = !!ctor.json;
+					ctor = ctor.type;
+				}
+				if (!isjson) {
+					val = ensureType(ctor, val);
+				}
 				if (val === this._src_[prop])
 					return;
 				let oldVal = this._src_[prop];
@@ -2338,7 +2406,7 @@ Vue.component('a2-pager', {
 					this._src_[prop] = val;
 				}
 				if (!skipDirty) // skip special properties
-					this._root_.$setDirty(true, this._path_);
+					this._root_.$setDirty(true, this._path_, prop);
 				if (this._lockEvents_) return; // events locked
 				if (eventWasFired) return; // was fired
 				let eventName = (this._path_ || 'Root') + '.' + prop + '.change';
@@ -2446,6 +2514,18 @@ Vue.component('a2-pager', {
 		if (elem._meta_.$items)
 			elem.$expanded = false; // tree elem
 
+		elem.$lockEvents = function () {
+			this._lockEvents_ += 1;
+		};
+
+		elem.$unlockEvents = function () {
+			this._lockEvents_ -= 1;
+		};
+
+		defHiddenGet(elem, '$eventsLocked', function () {
+			return this._lockEvents_ > 0;
+		});
+
 		defPropertyGet(elem, '$valid', function () {
 			if (this._root_._needValidate_)
 				this._root_._validateAll_();
@@ -2544,13 +2624,22 @@ Vue.component('a2-pager', {
 				platform.defer(() => {
 					let isRequery = elem.$vm.__isModalRequery();
 					elem.$emit('Model.load', elem, _lastCaller, isRequery);
-					elem._root_.$setDirty(false);
+					elem._root_.$setDirty(elem._root_.$isCopy ? true : false);
 				});
+			};
+			elem._fireUnload_ = () => {
+				elem.$emit('Model.unload', elem);
 			};
 			defHiddenGet(elem, '$readOnly', isReadOnly);
 			defHiddenGet(elem, '$stateReadOnly', isStateReadOnly);
 			defHiddenGet(elem, '$isCopy', isModelIsCopy);
+			defHiddenGet(elem, '$mainObject', mainObject);
+
 			elem._seal_ = seal;
+
+			elem._fireGlobalPeriodChanged_ = (period) => {
+				elem.$emit('GlobalPeriod.change', elem, period);
+			};
 		}
 		if (startTime) {
 			logtime('create root time:', startTime, false);
@@ -2603,6 +2692,14 @@ Vue.component('a2-pager', {
 		return false;
 	}
 
+	function mainObject() {
+		if ('$main' in this._meta_) {
+			let mainProp = this._meta_.$main;
+			return this[mainProp];
+		}
+		return null;
+	}
+
 	function isModelIsCopy() {
 		if ('__modelInfo' in this) {
 			let mi = this.__modelInfo;
@@ -2641,7 +2738,7 @@ Vue.component('a2-pager', {
 			return arr;
 		for (let i = 0; i < source.length; i++) {
 			arr[i] = new arr._elem_(source[i], dotPath, arr);
-			arr[i].$checked = false;
+			arr[i].__checked = false;
 		}
 		return arr;
 	}
@@ -2660,7 +2757,7 @@ Vue.component('a2-pager', {
 
 		arr.$new = function (src) {
 			let newElem = new this._elem_(src || null, this._path_ + '[]', this);
-			newElem.$checked = false;
+			newElem.__checked = false;
 			return newElem;
 		};
 
@@ -2724,6 +2821,12 @@ Vue.component('a2-pager', {
 		arr.$load = function () {
 			if (!this.$isLazy()) return;
 			platform.defer(() => this.$loadLazy());
+		};
+
+		arr.$resetLazy = function () {
+			this.$empty();
+			if (this.$loaded)
+				this.$loaded = false;
 		};
 
 		arr.$loadLazy = function () {
@@ -2920,6 +3023,11 @@ Vue.component('a2-pager', {
 			return null;
 		});
 
+		defHiddenGet(obj, "$ready", function () {
+			if (!this.$vm) return true;
+			return !this.$vm.$isLoading;
+		});
+
 		obj.$isValid = function (props) {
 			return true;
 		};
@@ -2987,6 +3095,25 @@ Vue.component('a2-pager', {
 				return this[itmsName];
 			});
 		}
+		if (meta.$permissions) {
+			defHiddenGet(obj.prototype, "$permissions", function () {
+				let permName = this._meta_.$permissions;
+				if (!permName) return undefined;
+				var perm = this[permName];
+				if (this.$isNew && perm === 0) {
+					let mi = this.$ModelInfo;
+					if (mi && utils.isDefined(mi.Permissions))
+						perm = mi.Permissions;
+				}
+				return Object.freeze({
+					canView: !!(perm & FLAG_VIEW),
+					canEdit: !!(perm & FLAG_EDIT),
+					canDelete: !!(perm & FLAG_DELETE),
+					canApply: !!(perm & FLAG_APPLY),
+					canUnapply: !!(perm & FLAG_UNAPPLY)
+				});
+			});
+		}
 	}
 
 	function emitSelect(arr, item) {
@@ -3018,6 +3145,19 @@ Vue.component('a2-pager', {
 				}
 			}
 		};
+		Object.defineProperty(elem.prototype, '$checked', {
+			enumerable: true,
+			configurable: true, /* needed */
+			get() {
+				return this.__checked;
+			},
+			set(val) {
+				this.__checked = val;
+				let arr = this.$parent;
+				let checkEvent = arr._path_ + '[].check';
+				arr._root_.$emit(checkEvent, arr/*array*/, this);
+			}
+		});
 	}
 
 	function emit(event, ...arr) {
@@ -3049,7 +3189,7 @@ Vue.component('a2-pager', {
 			return null;
 		}
 		if (name in tml.delegates) {
-			return tml.delegates[name];
+			return tml.delegates[name].bind(this.$root);
 		}
 		console.error(`Delegate "${name}" not found in the template`);
 	}
@@ -3286,14 +3426,15 @@ Vue.component('a2-pager', {
 		//console.dir(allerrs);
 	}
 
-	function setDirty(val, path) {
+	function setDirty(val, path, prop) {
 		if (this.$root.$readOnly)
 			return;
 		if (path && path.toLowerCase().startsWith('query'))
 			return;
 		if (isNoDirty(this.$root))
 			return;
-		// TODO: template.options.skipDirty
+		if (path && prop && isSkipDirty(this.$root, `${path}.${prop}`))
+			return;
 		this.$dirty = val;
 	}
 
@@ -3329,6 +3470,15 @@ Vue.component('a2-pager', {
 		let t = root.$template;
 		let opts = t && t.options;
 		return opts && opts.noDirty;
+	}
+
+	function isSkipDirty(root, path) {
+		let t = root.$template;
+		const opts = t && t.options;
+		if (!opts) return false;
+		const sd = opts.skipDirty;
+		if (!sd || !utils.isArray(sd)) return false;
+		return sd.indexOf(path) !== -1;
 	}
 
 	function saveSelections() {
@@ -3409,6 +3559,7 @@ Vue.component('a2-pager', {
 			this._root_._needValidate_ = true;
 			this._lockEvents_ -= 1;
 		}
+		if (this.$parent._lockEvents_) return this; // may be custom lock
 		let newId = this.$id__;
 		let fireChange = false;
 		if (utils.isDefined(newId) && utils.isDefined(oldId))
@@ -3418,6 +3569,7 @@ Vue.component('a2-pager', {
 			let eventName = this._path_ + '.change';
 			this._root_.$emit(eventName, this.$parent, this, this, propFromPath(this._path_));
 		}
+		return this;
 	}
 
 	function implementRoot(root, template, ctors) {
@@ -3467,12 +3619,19 @@ Vue.component('a2-pager', {
 		return obj;
 	}
 
-	function setRootModelInfo(item, data) {
+	function setRootModelInfo(elem, data) {
 		if (!data.$ModelInfo) return;
-		let elem = item;
 		for (let p in data.$ModelInfo) {
 			if (!elem) elem = this[p];
 			elem.$ModelInfo = checkPeriod(data.$ModelInfo[p]);
+
+			elem.$ModelInfo.$setFilter = function (prop, val) {
+				if (period.isPeriod(val))
+					this.Filter[prop].assign(val);
+				else
+					this.Filter[prop] = val;
+			};
+
 			return; // first element only
 		}
 	}
@@ -3528,7 +3687,7 @@ Vue.component('a2-pager', {
 
 // Copyright © 2015-2019 Alex Kukhtin. All rights reserved.
 
-// 20190402-7475
+// 20190808-7508
 /*components/include.js*/
 
 (function () {
@@ -3577,7 +3736,9 @@ Vue.component('a2-pager', {
 				if (this.currentUrl) {
 					// Do not set loading. Avoid blinking
 					this.__destroy();
-					http.load(this.currentUrl, this.$el).then(this.loaded);
+					http.load(this.currentUrl, this.$el)
+						.then(this.loaded)
+						.catch(this.error);
 				}
 			},
 			__destroy() {
@@ -3589,6 +3750,21 @@ Vue.component('a2-pager', {
 				setTimeout(() => {
 					this.requery();
 				}, 1);
+			},
+			error(msg) {
+				msg = msg || '';
+				if (this.insideDialog)
+					eventBus.$emit('modalClose', false);
+				if (msg.indexOf('UI:') === 0) {
+					let dlgData = {
+						promise: null, data: {
+							message: msg.substring(3).replace('\\n', '\n'),
+							style: 'alert'
+						}
+					};
+					eventBus.$emit('confirm', dlgData);
+				} else
+					alert(msg);
 			}
 		},
 		computed: {
@@ -3600,7 +3776,9 @@ Vue.component('a2-pager', {
 			//console.warn('include has been mounted');
 			if (this.src) {
 				this.currentUrl = this.src;
-				http.load(this.src, this.$el).then(this.loaded);
+				http.load(this.src, this.$el)
+					.then(this.loaded)
+					.catch(this.error);
 			}
 		},
 		destroyed() {
@@ -3627,7 +3805,9 @@ Vue.component('a2-pager', {
 					this.loading = true; // hides the current view
 					this.currentUrl = newUrl;
 					this.__destroy();
-					http.load(newUrl, this.$el).then(this.loaded);
+					http.load(newUrl, this.$el)
+						.then(this.loaded)
+						.catch(this.error);
 				}
 			},
 			needReload(val) {
@@ -3663,7 +3843,9 @@ Vue.component('a2-pager', {
 			load() {
 				let url = this.makeUrl();
 				this.__destroy();
-				http.load(url, this.$el).then(this.loaded);
+				http.load(url, this.$el)
+					.then(this.loaded)
+					.catch(this.error);
 			}
 		},
 		watch: {
@@ -3683,7 +3865,9 @@ Vue.component('a2-pager', {
 		mounted() {
 			if (this.source) {
 				this.currentUrl = this.makeUrl(this.source);
-				http.load(this.currentUrl, this.$el).then(this.loaded);
+				http.load(this.currentUrl, this.$el)
+					.then(this.loaded)
+					.catch(this.error);
 			}
 		},
 		destroyed() {
@@ -3693,7 +3877,7 @@ Vue.component('a2-pager', {
 })();
 // Copyright © 2015-2019 Alex Kukhtin. All rights reserved.
 
-// 20190305-7456
+// 20190905-7553
 // components/modal.js
 
 
@@ -3740,6 +3924,8 @@ Vue.component('a2-pager', {
 						mw.style.width = '300px'; // from less
 						break;
 				}
+				if (binding.value.minWidth)
+					mw.style.minWidth = binding.value.minWidth;
 			}
 		}
 	};
@@ -3912,13 +4098,9 @@ Vue.component('a2-pager', {
 				if (this.dialog.buttons)
 					return this.dialog.buttons;
 				else if (this.dialog.style === 'alert')
-					return [{ text: okText, result: false, tabindex: 1 }];
-				else if (this.dialog.style === 'alert-ok') {
-					this.dialog.style = 'alert';
 					return [{ text: okText, result: true, tabindex: 1 }];
-				}
 				else if (this.dialog.style === 'info')
-					return [{ text: okText, result: false, tabindex:1 }];
+					return [{ text: okText, result: true, tabindex:1 }];
 				return [
 					{ text: okText, result: true, tabindex:2 },
 					{ text: cancelText, result: false, tabindex:1 }
@@ -3942,9 +4124,30 @@ Vue.component('a2-pager', {
 
 	app.components['std:modal'] = modalComponent;
 })();
-// Copyright © 2015-2018 Alex Kukhtin. All rights reserved.
+// Copyright © 2015-2019 Alex Kukhtin. All rights reserved.
 
-// 20180416-7158
+// 20191010-7567
+// components/waitcursor.js
+
+
+(function () {
+	const waitCursor = {
+		template: `<div class="wait-cursor" v-if="visible"><div class="spinner"/></div>`,
+		props: {
+			ready: Boolean
+		},
+		computed: {
+			visible() {
+				return !this.ready;
+			}
+		}
+	};
+
+	Vue.component("wait-cursor", waitCursor);
+})();
+// Copyright © 2015-2019 Alex Kukhtin. All rights reserved.
+
+// 20190610-7499
 // components/toastr.js
 
 
@@ -3963,7 +4166,7 @@ Vue.component('a2-pager', {
 	const toastrTemplate = `
 <div class="toastr-stack" >
 	<transition-group name="list" tag="ul">
-		<a2-toast v-for="(t,k) in items" :key="k" :toast="t"></a2-toast>
+		<a2-toast v-for="(t, k) in items":toast="t" :key="t.$index"></a2-toast>
 	</transition-group>
 </div>
 `;

@@ -8,7 +8,7 @@ namespace A2v10.Xaml
 {
 	public class CardBody : Container
 	{
-		internal override void RenderElement(RenderContext context, Action<TagBuilder> onRender = null)
+		public override void RenderElement(RenderContext context, Action<TagBuilder> onRender = null)
 		{
 			var body = new TagBuilder("div", "card-body");
 			MergeAttributes(body, context);
@@ -35,10 +35,12 @@ namespace A2v10.Xaml
 
 		public Length MaxHeight { get; set; }
 
+		public Popover Hint { get; set; }
+
 		Boolean HasHeader => GetBinding(nameof(Header)) != null || Header != null;
 		Boolean HasFooter => GetBinding(nameof(Footer)) != null || Footer != null;
 
-		internal override void RenderElement(RenderContext context, Action<TagBuilder> onRender = null)
+		public override void RenderElement(RenderContext context, Action<TagBuilder> onRender = null)
 		{
 			if (SkipRender(context))
 				return;
@@ -82,14 +84,27 @@ namespace A2v10.Xaml
 				s.MergeAttribute(":text", hb.GetPathFormat(context));
 				s.Render(context);
 			}
-			else if (Header is UIElement hUiElem) {
+			else if (Header is UIElementBase hUiElem) {
 				hUiElem.RenderElement(context);
 			}
 			else if (Header is String hStr)
 			{
-				context.Writer.Write(context.Localize(hStr));
+				context.Writer.Write(context.LocalizeCheckApostrophe(hStr));
 			}
+			RenderHint(context);
 			h.RenderEnd(context);
+		}
+
+		void RenderHint(RenderContext context)
+		{
+			if (Hint == null)
+				return;
+			if (Hint.Icon == Icon.NoIcon)
+				Hint.Icon = Icon.Help;
+			Hint.RenderElement(context, (t) =>
+			{
+				t.AddCssClass("hint");
+			});
 		}
 
 		void RenderFooter(RenderContext context)
@@ -105,13 +120,13 @@ namespace A2v10.Xaml
 				s.MergeAttribute(":text", fb.GetPathFormat(context));
 				s.Render(context);
 			}
-			else if (Footer is UIElement fUiElem)
+			else if (Footer is UIElementBase fUiElem)
 			{
 				fUiElem.RenderElement(context);
 			}
 			else if (Footer is String fStr)
 			{
-				context.Writer.Write(context.Localize(fStr));
+				context.Writer.Write(context.LocalizeCheckApostrophe(fStr));
 			}
 			f.RenderEnd(context);
 		}

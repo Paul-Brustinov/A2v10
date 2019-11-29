@@ -19,7 +19,7 @@
 			</Toolbar>
 			<TreeView AutoSelect="FirstItem" ExpandFirstItem="True"
 					ItemsSource="{Bind Agents}" FolderSelect="True">
-				<TreeViewItem ItemsSource="{Bind SubItems}" Label="{Bind Name}" Icon="{Bind Icon}" />
+				<TreeViewItem ItemsSource="{Bind SubItems}" Label="{Bind Name}" Icon="{Bind Icon}" IsGroup="{Bind Id}"/>
 			</TreeView>
 		</Block>
 		<Block Splitter.MinWidth="20%">

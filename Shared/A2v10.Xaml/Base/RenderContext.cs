@@ -59,6 +59,8 @@ namespace A2v10.Xaml
 				String vAlign = _vAlign.Value.AlignSelf();
 				if (vAlign != null)
 					rv.Add(new StringKeyValuePair() { Key = "align-self", Value = vAlign });
+				if (vAlign == "stretch")
+					rv.Add(new StringKeyValuePair() { Key = "overflow", Value = "auto" });
 			}
 			return rv;
 		}
@@ -187,6 +189,8 @@ namespace A2v10.Xaml
 			_stackScope.Push(new ScopeElem(scope, replace));
 		}
 
+		internal Int32 ScopeLevel => _stackScope.Count;
+
 		internal void PopScope()
 		{
 			_stackScope.Pop();
@@ -252,5 +256,11 @@ namespace A2v10.Xaml
 			return _localizer.Localize(_currentLocale, text, replaceNewLine);
 		}
 
+		public String LocalizeCheckApostrophe(String text)
+		{
+			var txt = Localize(text);
+			if (txt == null) return null;
+			return txt.Replace("\\'", "'");
+		}
 	}
 }

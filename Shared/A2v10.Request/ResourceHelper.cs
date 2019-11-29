@@ -9,11 +9,14 @@ namespace A2v10.Request
 	public static class ResourceHelper
 	{
 		public static String InitLayoutHtml => Resources.initLayout;
+		public static String InitLayoutMobileHtml => Resources.initLayoutMobile;
 		public static String LoginHtml => Resources.login;
+		public static String LoginMobileHtml => Resources.loginMobile;
 		public static String LoginScript => Resources.loginScript;
 		public static String RegisterTenantHtml => Resources.registerTenant;
 		public static String RegisterTenantScript => Resources.registerTenantScript;
 		public static String ForgotPasswordHtml => Resources.forgotPassword;
+		public static String ForgotPasswordMobileHtml => Resources.forgotPasswordMobile;
 		public static String ForgotPasswordScript => Resources.forgotPasswordScript;
 		public static String ResetPasswordHtml => Resources.resetPassword;
 		public static String ResetPasswordScript => Resources.resetPasswordScript;
@@ -40,8 +43,9 @@ namespace A2v10.Request
 					case "uk": return Resources.locale_uk;
 					case "en": return Resources.locale_en;
 					case "ru": return Resources.locale_ru;
+					case "de": return Resources.locale_de;
 				}
-				throw new InvalidOperationException("Only the following cultures are supported: 'uk', 'ru', 'en'");
+				throw new InvalidOperationException("Only the following cultures are supported: 'uk', 'ru', 'en', 'de'");
 			}
 		}
 	}

@@ -1,7 +1,16 @@
 <!-- Edit Supplier -->
 <Dialog xmlns="clr-namespace:A2v10.Xaml;assembly=A2v10.Xaml" 
-        Title="Свойства поставщика" HelpUrl="/catalog/agents">
+        Title="Свойства поставщика" HelpUrl="/catalog/agents" TestId="SupplierProps" ShowWaitCursor="True" CanCloseDelegate="canClose">
+	<Dialog.TitleInfo>
+		<Group>
+			<TagLabel Style="Orange">Редагування заборонено!</TagLabel>
+			<TagLabel Style="Error">Чернетка</TagLabel>
+		</Group>
+	</Dialog.TitleInfo>
 	<Dialog.Buttons>
+		<Button Content="Run Test" Command="{BindCmd Execute, CommandName=runTest, SaveRequired=True}"/>
+		<Separator />
+		<Button Content="Сохранить" Command="{BindCmd Save}"/>
 		<Button Content="Сохранить и закрыть" Command="{BindCmd SaveAndClose}"/>
 		<Button Content="Отмена" Command="{BindCmd Close}"/>
 	</Dialog.Buttons>
@@ -14,6 +23,7 @@
 					</TextBox.Validator>
 				</TextBox>
 				<TextBox Grid.Row="2" Label="Код ЕДРПОУ" Value="{Bind Agent.Code}" CssClass="aaa sss sdsss"/>
+				<Button Icon="Package" Command="{BindCmd Dialog, Action=Append, Argument={Bind Countries}, Url='/catalog/edit', Data={Bind Agent.$EditArg}, SaveRequired=True}"></Button>
 				<TextBox Grid.Row="5" Grid.ColSpan="2" Label="Примечание" Value="{Bind Agent.Memo}" Rows="3" Multiline="True"/>
 			</Grid>
 			<!--
@@ -22,18 +32,23 @@
 				<Code Content="{Bind Root.$$tabVisible}"/>
 			</StackPanel>
 			-->
+			<Code Multiline="True" Content="{Bind Agent.$permissions}"></Code>
 		</Tab>
 		<Tab Header="Validators" Height="300px">
 			<Grid Columns="1*, 1*">
-				<TextBox Label="BottomLeft" Value="{Bind Agent.Name}">
+				<TextBox Label="BottomLeft" Value="{Bind Agent.Name}" Validator="BottomLeft">
+					<!--
 					<TextBox.Validator>
 						<Validator Placement="BottomLeft"/>
 					</TextBox.Validator>
+					-->
 				</TextBox>
-				<TextBox Label="TopLeft" Value="{Bind Agent.Name}">
+				<TextBox Label="TopLeft" Value="{Bind Agent.Name}" Validator="TopLeft,150px">
+					<!--
 					<TextBox.Validator>
 						<Validator Placement="TopLeft"/>
 					</TextBox.Validator>
+					-->
 				</TextBox>
 				<TextBox Label="BottomRight" Value="{Bind Agent.Name}">
 					<TextBox.Validator>
@@ -126,8 +141,35 @@
 			<Header Content="Tab with Show"/>
 		</Tab>
 		-->
-		<Tab Header="Another tab (Hide)" Hide="{Bind Root.$$tabVisible}">
-			<Header Content="Tab with Hide"/>
+		<Tab Header="Attachments">
+			<Header Content="Attachments"/>
+			<List ItemsSource="{Bind Agent.Attachments}" Style="Underlined">
+				<ListItem Icon="FileContent">
+					<ListItem.Header>
+						<Hyperlink Content="{Bind Name}" Command="{BindCmd Command=File, Url='/agent/attachment', Argument={Bind Id}, FileAction=Print}"/>
+					</ListItem.Header>
+					<ListItem.Content>
+						<FlexList Orientation="Horizontal">
+							<Span Content="{Bind Id}"/>
+							<Span Content="{Bind Mime}"/>
+							<Span Content="{Bind Size}"/>
+							<FileImage Url="/agent/attachment" Value="{Bind Id}" Width="50" Height="50"/>
+						</FlexList>
+					</ListItem.Content>
+					<ListItem.CommandBar>
+						<CommandBar>
+							<Button Icon="Clear" Command="{BindCmd Remove, Argument={Bind}}"/>
+						</CommandBar>
+					</ListItem.CommandBar>
+				</ListItem>
+			</List>
+			<UploadFile Url="/Agent/attachment" Delegate="uploadAttachment" Accept="application/pdf,image/*"/>
+			<Block>
+				<Span Content="{Bind Agent.$SelectedMime}"></Span>
+			</Block>
+			<TabBar ItemsSource="{Bind Agent.Attachments}" Value="{Bind Agent.$SelectedMime}">
+				<TabButton Content="{Bind Name}" ActiveValue="{Bind Name}"/>
+			</TabBar>
 		</Tab>
 	</TabPanel>
 </Dialog>

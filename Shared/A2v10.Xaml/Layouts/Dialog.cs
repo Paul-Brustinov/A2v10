@@ -14,21 +14,27 @@ namespace A2v10.Xaml
 		Large = 2,
 	}
 
+
 	public class Dialog : RootContainer, ISupportTwoPhaseRendering
 	{
 		public String Title { get; set; }
 		public String HelpUrl { get; set; }
+		public String TestId { get; set; }
+
+		public UIElementBase TitleInfo { get; set; }
 
 		public DialogSize Size { get; set; }
 		public Length Width { get; set; }
+		public Length MinWidth { get; set; }
 		public Length Height { get; set; }
 		public String CanCloseDelegate { get; set; }
 		public Boolean AlwaysOk { get; set; }
 		public UIElementBase Taskpad { get; set; }
+		public Boolean ShowWaitCursor { get; set; }
 
 		public UIElementCollection Buttons { get; set; } = new UIElementCollection();
 
-		internal virtual void OnCreateContent(TagBuilder tag)
+		protected virtual void OnCreateContent(TagBuilder tag)
 		{
 		}
 
@@ -48,18 +54,27 @@ namespace A2v10.Xaml
 			return opts.ToString();
 		}
 
-		internal override void RenderElement(RenderContext context, Action<TagBuilder> onRender = null)
+		public override void RenderElement(RenderContext context, Action<TagBuilder> onRender = null)
 		{
 			var dialog = new TagBuilder("div", "modal");
 			dialog.MergeAttribute("id", context.RootId);
 			dialog.MergeAttribute("v-cloak", String.Empty);
 			dialog.AddCssClassBoolNo(UserSelect, "user-select");
-
 			dialog.MergeAttribute("data-controller-attr", GetControllerAttributes());
+
+			if (!String.IsNullOrEmpty(TestId) && context.IsDebugConfiguration)
+				dialog.MergeAttribute("test-id", TestId);
+
 
 			SetSize(dialog);
 
 			dialog.RenderStart(context);
+
+			if (ShowWaitCursor)
+				new TagBuilder("wait-cursor", "dialog")
+					.MergeAttribute(":ready", "$data.$ready")
+					.Render(context, TagRenderMode.Normal);
+
 
 			RenderHeader(context);
 			RenderLoadIndicator(context);
@@ -98,7 +113,7 @@ namespace A2v10.Xaml
 			dialog.RenderEnd(context);
 		}
 
-		internal override void RenderChildren(RenderContext context, Action<TagBuilder> onRenderStatic = null)
+		public override void RenderChildren(RenderContext context, Action<TagBuilder> onRenderStatic = null)
 		{
 			// static without wrapper
 			foreach (var c in Children)
@@ -117,6 +132,8 @@ namespace A2v10.Xaml
 				sb.Append("cssClass:'modal-small',");
 			if (Width != null)
 				sb.Append($"width:'{Width.Value}',");
+			if (MinWidth != null)
+				sb.Append($"minWidth:'{MinWidth.Value}',");
 			sb.RemoveTailComma();
 			sb.Append("}");
 			dialog.MergeAttribute("v-modal-width", sb.ToString());
@@ -134,13 +151,22 @@ namespace A2v10.Xaml
 				if (hdr != null)
 					span.MergeAttribute("v-text", hdr.GetPathFormat(context));
 				else if (Title != null)
-					span.SetInnerText(context.Localize(Title));
+					span.SetInnerText(context.LocalizeCheckApostrophe(Title));
 				span.Render(context);
+			}
+			if (TitleInfo != null)
+			{
+				var span = new TagBuilder("span", "modal-title-info");
+				span.RenderStart(context);
+				TitleInfo.RenderElement(context, null);
+				span.RenderEnd(context);
 			}
 			var close = new TagBuilder("button", "btnclose");
 			close.MergeAttribute("@click.prevent", "$modalClose(false)");
 			close.SetInnerText("&#x2715;");
 			close.Render(context);
+
+			RenderHelp(context);
 
 			header.RenderEnd(context);
 		}
@@ -159,7 +185,7 @@ namespace A2v10.Xaml
 			var footer = new TagBuilder("div", "modal-footer");
 			footer.RenderStart(context);
 
-			RenderHelp(context);
+			//RenderHelp(context);
 			foreach (var b in Buttons)
 				b.RenderElement(context);
 
@@ -172,27 +198,27 @@ namespace A2v10.Xaml
 		{
 			if (!HasHelp)
 				return;
-			//<a class="btn-help"><i class="ico ico-help"></i>Справка</a>
 			var ha = new TagBuilder("a", "btn-help");
-			// TODO: Help path
+			ha.MergeAttribute("rel", "help");
+			ha.MergeAttribute("title", context.Localize("@[Help]"));
+
 			var hbind = GetBinding(nameof(HelpUrl));
 			if (hbind != null)
 			{
 				String hpath = hbind.GetPathFormat(context);
-				ha.MergeAttribute("@click.prevent", $"$showHelp({hpath})");
+				ha.MergeAttribute("@click.stop.prevent", $"$showHelp({hpath})");
 				ha.MergeAttribute(":href", $"$helpHref({hpath})");
 			}
 			else if (!String.IsNullOrEmpty(HelpUrl))
 			{
-				ha.MergeAttribute("@click.prevent", $"$showHelp('{HelpUrl}')");
+				ha.MergeAttribute("@click.stop.prevent", $"$showHelp('{HelpUrl}')");
 				ha.MergeAttribute(":href", $"$helpHref('{HelpUrl}')");
 			}
 			ha.RenderStart(context);
 			new TagBuilder("i", "ico ico-help")
 				.Render(context);
-			context.Writer.Write(context.Localize("@[Help]"));
+			//context.Writer.Write(context.Localize("@[Help]"));
 			ha.RenderEnd(context);
-			new TagBuilder("div", "aligner").Render(context);
 		}
 
 		public void RenderSecondPhase(RenderContext context)

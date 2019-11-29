@@ -15,6 +15,7 @@ namespace A2v10.Xaml
 		Green = Success,
 		Orange = Warning,
 		Red = Danger,
+        Error = Danger,
 		Cyan = Info,
 		Outline = 6
 	}
@@ -35,7 +36,7 @@ namespace A2v10.Xaml
 		public IconAlign IconAlign { get; set; }
 		public Boolean Rounded { get; set; }
 
-		internal override void RenderElement(RenderContext context, Action<TagBuilder> onRender = null)
+		public override void RenderElement(RenderContext context, Action<TagBuilder> onRender = null)
 		{
 			if (CheckDisabledModel(context))
 				return;
@@ -103,13 +104,16 @@ namespace A2v10.Xaml
 			if (IconAlign == IconAlign.Top)
 				button.AddCssClass("icon-top");
 
-			//if (!insideBar)
-			if (Style != ButtonStyle.Default)
-				button.AddCssClass($"btn-{Style.ToString().ToLowerInvariant()}");
+            var styleBind = GetBinding(nameof(Style));
+            if (styleBind != null)
+                button.MergeAttribute(":class", $"'btn-' + {styleBind.GetPathFormat(context)}");
+            else if (Style != ButtonStyle.Default)
+                button.AddCssClass($"btn-{Style.ToString().ToLowerInvariant()}");
 			button.AddCssClassBool(Rounded, "btn-rounded");
 			if (hasDropDown && !hasCommand)
 				button.MergeAttribute("toggle", String.Empty);
-			MergeAttributes(button, context, MergeAttrMode.NoTabIndex); // dinamic
+			MergeAttributes(button, context, MergeAttrMode.NoTabIndex & ~MergeAttrMode.Content); // dinamic
+			
 			if (TabIndex != 0)
 				button.MergeAttribute("tabindex", TabIndex.ToString());
 			if (!HasContent && (Icon != Icon.NoIcon))
@@ -118,7 +122,17 @@ namespace A2v10.Xaml
 			button.MergeAttribute("v-settabindex", String.Empty);
 			button.RenderStart(context);
 			RenderIcon(context, Icon);
+
+			var contBind = GetBinding(nameof(Content));
+			if (contBind != null)
+			{
+				var cont = new TagBuilder("span");
+				cont.MergeAttribute("v-text", contBind.GetPathFormat(context));
+				cont.Render(context);
+			}
+
 			RenderContent(context);
+
 			if (hasDropDown)
 			{
 				if (!hasCommand)

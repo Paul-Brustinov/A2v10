@@ -1,6 +1,6 @@
 ﻿// Copyright © 2015-2019 Alex Kukhtin. All rights reserved.
 
-// 20190414-7485
+// 20191017-7568
 // components/datepicker.js
 
 
@@ -47,6 +47,7 @@
 		},
 		methods: {
 			toggle(ev) {
+				if (this.disabled) return;
 				if (!this.isOpen) {
 					// close other popups
 					eventBus.$emit('closeAllPopups');
@@ -63,11 +64,22 @@
 				}
 			},
 			setMonth(dt) {
-				this.item[this.prop] = dt;
+				this.setDate(dt);
 			},
 			selectDay(day) {
-				this.item[this.prop] = day;
+				var dt = new Date(day);
+				dt.setHours(0, -dt.getTimezoneOffset(), 0, 0);
+				this.setDate(dt);
 				this.isOpen = false;
+			},
+			setDate(d) {
+				// save time
+				let od = new Date(this.modelDate);
+				let h = od.getUTCHours();
+				let m = od.getUTCMinutes();
+				var nd = new Date(d);
+				nd.setUTCHours(h, m);
+				this.item[this.prop] = nd;
 			},
 			dayClass(day) {
 				let cls = '';
@@ -102,15 +114,18 @@
 					if (utils.date.isZero(this.modelDate))
 						return '';
 					if (this.view === 'month')
-						return utils.text.capitalize(this.modelDate.toLocaleString(locale.$Locale, { year: 'numeric', month: 'long' }));
+						return utils.text.capitalize(this.modelDate.toLocaleString(locale.$Locale, { timeZone:'UTC',  year: 'numeric', month: 'long' }));
 					else
-						return this.modelDate.toLocaleString(locale.$Locale, { year: 'numeric', month: '2-digit', day: '2-digit' });
+						return this.modelDate.toLocaleString(locale.$Locale, { timeZone: 'UTC', year: 'numeric', month: '2-digit', day: '2-digit' });
 				},
 				set(str) {
 					let md = utils.date.parse(str);
-					this.item[this.prop] = md;
-					if (utils.date.isZero(md))
+					if (utils.date.isZero(md)) {
+						this.item[this.prop] = md;
 						this.isOpen = false;
+					} else {
+						this.setDate(md);
+					}
 				}
 			}
 		},

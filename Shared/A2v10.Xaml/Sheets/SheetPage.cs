@@ -4,11 +4,12 @@ using System;
 
 namespace A2v10.Xaml
 {
-	public class SheetPage : Container
+	public class SheetPage : Container, IHasWrapper
 	{
 		public PageOrientation Orientation { get; set; }
+		public Size PageSize { get; set; }
 
-		internal override void RenderElement(RenderContext context, Action<TagBuilder> onRender = null)
+		public override void RenderElement(RenderContext context, Action<TagBuilder> onRender = null)
 		{
 			var wrap = new TagBuilder("div", "sheet-page-wrapper", IsInGrid);
 			MergeAttributes(wrap, context);
@@ -16,6 +17,20 @@ namespace A2v10.Xaml
 			var page = new TagBuilder("div", "sheet-page");
 			page.AddCssClass(Orientation.ToString().ToLowerInvariant());
 			page.MergeAttribute("v-page-orientation", $"'{Orientation.ToString().ToLowerInvariant()}'");
+
+			if (PageSize != null)
+			{
+				if (!PageSize.Width.IsEmpty)
+				{
+					page.MergeStyle("width", PageSize.Width.ToString());
+					page.MergeStyle("max-width", PageSize.Width.ToString());
+				}
+				if (!PageSize.Height.IsEmpty)
+				{
+					page.MergeStyle("min-height", PageSize.Height.ToString());
+				}
+			}
+
 			page.RenderStart(context);
 			RenderChildren(context);
 			page.RenderEnd(context);

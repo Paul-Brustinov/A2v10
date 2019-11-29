@@ -9,10 +9,11 @@
 #define new DEBUG_NEW
 #endif
 
+#define LIC_NO_ERROR		0
+
 // virutal
 CClientSchemeHandler::~CClientSchemeHandler() 
 {
-
 }
 
 std::string GetMimeFromString(const char* szString)
@@ -79,6 +80,11 @@ bool CClientSchemeHandler::ProcessRequest(CefRefPtr<CefRequest> request,
 			}
 		}
 	}
+	else 
+	{
+		// GET
+		CheckLicense(url);
+	}
 
 	std::string mime;
 	std::string content_disposition;
@@ -87,7 +93,7 @@ bool CClientSchemeHandler::ProcessRequest(CefRefPtr<CefRequest> request,
 	if (_files.length() > 0)
 		rc = CApplicationResources::UploadFiles(url.c_str(), _files.c_str(), mime, data_, isPost);
 	else
-		rc = CApplicationResources::LoadResource(url.c_str(), mime, content_disposition, data_, post_, isPost);
+		rc = CApplicationResources::LoadResource(url.c_str(), mime, content_disposition, data_, post_, isPost, status_code_);
 	if (rc) {
 		mime_type_ = mime;
 		content_disposition_ = content_disposition;
@@ -110,6 +116,21 @@ bool CClientSchemeHandler::ProcessRequest(CefRefPtr<CefRequest> request,
 	return false;
 }
 
+void CClientSchemeHandler::CheckLicense(const std::string& url) 
+{
+	if (url.find("_page") == std::string::npos)
+		return;
+	int licRC = CDotNetRuntime::VerifyLicense();
+	if (licRC == LIC_NO_ERROR)
+		return;
+	CString caption;
+	CString msg;
+	caption.LoadString(IDS_LIC_ERROR_BASE);
+	msg.LoadString(IDS_LIC_ERROR_BASE + licRC);
+	HWND hFrame = AfxGetApp()->m_pMainWnd->GetSafeHwnd();
+	::MessageBox(hFrame, (LPCWSTR) msg, (LPCWSTR) caption, MB_OK | MB_ICONHAND);
+}
+
 // virtual 
 void CClientSchemeHandler::GetResponseHeaders(CefRefPtr<CefResponse> response,
 	int64& response_length,
@@ -119,7 +140,13 @@ void CClientSchemeHandler::GetResponseHeaders(CefRefPtr<CefResponse> response,
 	DCHECK(!data_.empty());
 
 	response->SetMimeType(mime_type_);
-	response->SetStatus(200);
+	if (status_code_ != 0) {
+		response->SetStatus(status_code_);
+		response->SetStatusText(L"Custom server error");
+	}
+	else {
+		response->SetStatus(200);
+	}
 
 	if (!content_disposition_.empty()) {
 		CefResponse::HeaderMap headerMap;

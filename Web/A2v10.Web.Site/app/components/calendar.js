@@ -1,6 +1,6 @@
 ﻿// Copyright © 2015-2019 Alex Kukhtin. All rights reserved.
 
-// 20190414-7485
+// 20191003-7562
 // components/calendar.js
 
 (function () {
@@ -109,7 +109,7 @@
 			nextMonth() {
 				let dt = new Date(this.model);
 				if (this.isDayView)
-					dt.setMonth(dt.getMonth() + 1);
+					dt = utils.date.add(dt, 1, 'month');
 				else
 					dt.setFullYear(dt.getFullYear() + 1);
 				this.setMonth(dt, this.pos);
@@ -117,7 +117,7 @@
 			prevMonth() {
 				let dt = new Date(this.model);
 				if (this.isDayView)
-					dt.setMonth(dt.getMonth() - 1);
+					dt = utils.date.add(dt, -1, 'month');
 				else
 					dt.setFullYear(dt.getFullYear() - 1);
 				this.setMonth(dt, this.pos);
@@ -154,7 +154,8 @@
 				return cls;
 			},
 			dayTitle(day) {
-				return day.toLocaleString(locale.$Locale, { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' });
+				return day.toString();
+				//return day.toLocaleString(locale.$Locale, { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' });
 			},
 			mouseOver(day) {
 				if (this.hover)

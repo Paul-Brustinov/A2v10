@@ -77,9 +77,7 @@ namespace A2v10.Web.Config
 		{
 			get
 			{
-				// TODO: ???
-				var key =  ConfigurationManager.AppSettings["appKey"];
-				return key;
+				return ConfigurationManager.AppSettings["appKey"] ?? String.Empty;
 			}
 		}
 
@@ -87,6 +85,8 @@ namespace A2v10.Web.Config
 		public String AppDescription => ConfigurationManager.AppSettings["appDescription"];
 		public String SupportEmail => ConfigurationManager.AppSettings["supportEmail"];
 		public String AppHost => ConfigurationManager.AppSettings["appHost"];
+		public String UserAppHost => ConfigurationManager.AppSettings["userAppHost"];
+		public String SmtpConfig => ConfigurationManager.AppSettings["mailSettings"];
 
 		public String HostingPath => HostingEnvironment.MapPath("~");
 
@@ -101,27 +101,39 @@ namespace A2v10.Web.Config
 			}
 		}
 
-		public Boolean IsMultiTenant
-		{
+		public Boolean IsAdminAppPresent {
 			get
 			{
-				var mt = ConfigurationManager.AppSettings["multiTenant"];
-				if (String.IsNullOrEmpty(mt))
-					return false;
-				return mt.ToLowerInvariant() == "true";
+				String dirName = Path.Combine(AppPath, "Admin").ToLowerInvariant();
+				if (Directory.Exists(dirName))
+					return true;
+				String appFile = Path.Combine(AppPath, "admin.app");
+				if (File.Exists(appFile))
+					return true;
+				return false;
 			}
 		}
 
-		public Boolean IsRegistrationEnabled
+		Boolean IsAppSettingsIsTrue(String name)
+		{
+			var mt = ConfigurationManager.AppSettings[name];
+			if (String.IsNullOrEmpty(mt))
+				return false;
+			return mt.ToLowerInvariant() == "true";
+		}
+
+		public Boolean IsUsePeriodAndCompanies
 		{
 			get
 			{
-				var mt = ConfigurationManager.AppSettings["registration"];
-				if (String.IsNullOrEmpty(mt))
-					return true;
-				return mt.ToLowerInvariant() == "true";
+				return IsAppSettingsIsTrue("custom");
 			}
 		}
+
+		public Boolean IsMultiTenant => IsAppSettingsIsTrue("multiTenant");
+		public Boolean IsMultiCompany => IsAppSettingsIsTrue("multiCompany");
+		public Boolean IsRegistrationEnabled => IsAppSettingsIsTrue("registration");
+		public Boolean IsDTCEnabled => IsAppSettingsIsTrue("enableDTC");
 
 		public String UseClaims => ConfigurationManager.AppSettings["useClaims"];
 

@@ -3,7 +3,6 @@
 using System;
 using System.Collections.Generic;
 using System.Dynamic;
-using System.IO;
 using System.Threading.Tasks;
 
 using Stimulsoft.Report.Mvc;
@@ -12,6 +11,8 @@ using A2v10.Data.Interfaces;
 using A2v10.Infrastructure;
 using A2v10.Request;
 using System.Configuration;
+using Stimulsoft.Report;
+using System.IO;
 
 namespace A2v10.Reports
 {
@@ -19,7 +20,15 @@ namespace A2v10.Reports
 	{
 		public Int64 UserId;
 		public Int32 TenantId;
+		public Int64 CompanyId;
 	}
+
+	public class ExportReportResult
+	{
+		public String ContentType;
+		public String Extension;
+	}
+	
 
 	public class ReportInfo
 	{
@@ -74,8 +83,10 @@ namespace A2v10.Reports
 			}
 
 			prms.Set("UserId", context.UserId);
-			if (_host.IsMultiTenant)
+			if (_host.IsMultiTenant || context.TenantId != 0 /*hack for desktop*/)
 				prms.Set("TenantId", context.TenantId);
+			if (_host.IsMultiCompany)
+				prms.Set("CompanyId", context.CompanyId);
 			prms.Set("Id", id);
 			prms.AppendIfNotExists(rep.parameters);
 
@@ -88,6 +99,8 @@ namespace A2v10.Reports
 			vars.Set("UserId", context.UserId);
 			if (_host.IsMultiTenant)
 				vars.Set("TenantId", context.TenantId);
+			if (_host.IsMultiCompany)
+				prms.Set("CompanyId", context.CompanyId);
 			vars.Set("Id", id);
 			ri.Variables = vars;
 			var repName = _localizer.Localize(null, String.IsNullOrEmpty(rep.name) ? rep.ReportName : rep.name);
@@ -99,10 +112,10 @@ namespace A2v10.Reports
 
 		// saveFileDialog: true -> download
 		// saveFileDialog: false -> show
-		public StiMvcActionResult ExportStiReport(ReportInfo ri, String format, bool saveFile = true)
+		public StiMvcActionResult ExportStiReport(ReportInfo ri, String format, Boolean saveFile = true)
 		{
 			var targetFormat = (format ?? "pdf").ToLowerInvariant();
-			using (var stream = _host.ApplicationReader.FileStreamFullPath(ri.ReportPath))
+			using (var stream = _host.ApplicationReader.FileStreamFullPathRO(ri.ReportPath))
 			{
 				var r = StiReportExtensions.CreateReport(stream, ri.Name);
 				r.AddDataModel(ri.DataModel);
@@ -121,6 +134,57 @@ namespace A2v10.Reports
 				else
 					throw new NotImplementedException($"Format '{targetFormat}' is not supported in this version");
 			}
+		}
+
+		public ExportReportResult ExportStiReportStream(ReportInfo ri, String format, Stream output)
+		{
+			var rr = new ExportReportResult();
+			var targetFormat = (format ?? "pdf").ToLowerInvariant();
+			using (var stream = _host.ApplicationReader.FileStreamFullPathRO(ri.ReportPath))
+			{
+				var r = StiReportExtensions.CreateReport(stream, ri.Name);
+				r.AddDataModel(ri.DataModel);
+				if (ri.Variables != null)
+					r.AddVariables(ri.Variables);
+				if (targetFormat == "pdf")
+				{
+					r.Render();
+					r.ExportDocument(StiExportFormat.Pdf, output, StiReportExtensions.GetDefaultPdfSettings());
+					rr.ContentType = "application/pdf";
+					rr.Extension = "pdf";
+				}
+				else if (format == "excel")
+				{
+					r.Render();
+					r.ExportDocument(StiExportFormat.Excel2007, output, StiReportExtensions.GetDefaultXlSettings());
+					rr.ContentType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+					rr.Extension = "xlsx";
+				}
+				else if (format == "word")
+				{
+					r.Render();
+					r.ExportDocument(StiExportFormat.Word2007, output, StiReportExtensions.GetDefaultWordSettings());
+					rr.ContentType = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+					rr.Extension = "docx";
+				}
+				else if (format == "opentext")
+				{
+					r.Render();
+					r.ExportDocument(StiExportFormat.Odt, output, StiReportExtensions.GetDefaultOdtSettings());
+					rr.ContentType = "application/vnd.oasis.opendocument.text";
+					rr.Extension = "odt";
+				}
+				else if (format == "opensheet")
+				{
+					r.Render();
+					r.ExportDocument(StiExportFormat.Ods, output, StiReportExtensions.GetDefaultOdsSettings());
+					rr.ContentType = "application/vnd.oasis.opendocument.spreadsheet";
+					rr.Extension = "ods";
+				}
+				else
+					throw new NotImplementedException($"Format '{targetFormat}' is not supported in this version");
+			}
+			return rr;
 		}
 
 		private Boolean _licenseSet = false;

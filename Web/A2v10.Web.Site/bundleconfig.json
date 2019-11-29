@@ -6,6 +6,7 @@
 			"app/services/locale.js",
 			"app/platform/polyfills.js",
 			"app/platform/webvue.js",
+			"app/services/const.js",
 			"app/services/utils.js",
 			"app/services/url.js",
 			"app/services/period.js",
@@ -28,6 +29,7 @@
 			"app/components/combobox.js",
 			"app/components/calendar.js",
 			"app/components/datepicker.js",
+			"app/components/timepicker.js",
 			"app/components/periodpicker.js",
 			"app/components/selector.js",
 			"app/components/datagrid.js",
@@ -39,14 +41,16 @@
 			"app/components/tab.js",
 			"app/components/list.js",
 			"app/components/modal.js",
+			"app/components/waitcursor.js",
 			"app/components/wizard.js",
 			"app/components/toastr.js",
 			"app/components/image.js",
-			"app/components/attachments.js",
+			"app/components/fileupload.js",
 			"app/components/taskpad.js",
 			"app/components/panel.js",
 			"app/components/sheet.js",
 			"app/components/newbutton.js",
+			"app/components/companybutton.js",
 			"app/components/graphics.js",
 			"app/components/debug.js",
 			"app/components/feedback.js",
@@ -55,9 +59,81 @@
 			"app/components/iframetarget.js",
 			"app/directives/*.js",
 			"app/controllers/base.js",
-			"app/controllers/shell.js"
+			"app/controllers/shell.js",
+			"app/controllers/tests.js"
 		],
-		"minify": { "enabled": false }
+		"minify": {
+			"enabled": false,
+			"renameLocals": false
+		}
+	},
+	{
+		"outputFileName": "Scripts/mobile.js",
+		"inputFiles": [
+			"app/app.js",
+			"app/services/locale.js",
+			"app/platform/polyfills.js",
+			"app/platform/webvue.js",
+			"app/services/const.js",
+			"app/services/utils.js",
+			"app/services/url.js",
+			"app/services/period.js",
+			"app/services/modelinfo.js",
+			"app/services/http.js",
+			"app/platform/routex.js",
+			"app/services/log.js",
+			"app/services/validators.js",
+			"app/services/datamodel.js",
+			"app/services/dataservice.js",
+			"app/services/popup.js",
+			"app/services/mask.js",
+			"app/services/tools.js",
+			"app/services/html.js",
+			"app/services/routing.js",
+			"app/components/include.js",
+			"app/components/control.js",
+			"app/components/validator.js",
+			"app/components/textbox.js",
+			"app/components/combobox.js",
+			"app/components/calendar.js",
+			"app/components/datepicker.js",
+			"app/components/timepicker.js",
+			"app/components/periodpicker.js",
+			"app/components/selector.js",
+			"app/components/datagrid.js",
+			"app/components/pager.js",
+			"app/components/popover.js",
+			"app/components/treeview.js",
+			"app/components/collectionview.js",
+			"app/components/upload.js",
+			"app/components/tab.js",
+			"app/components/list.js",
+			"app/components/modal.js",
+			"app/components/waitcursor.js",
+			"app/components/wizard.js",
+			"app/components/toastr.js",
+			"app/components/image.js",
+			"app/components/fileupload.js",
+			"app/components/taskpad.js",
+			"app/components/panel.js",
+			"app/components/sheet.js",
+			"app/components/newbutton.js",
+			"app/components/companybutton.js",
+			"app/components/graphics.js",
+			"app/components/debug.js",
+			"app/components/feedback.js",
+			"app/components/doctitle.js",
+			"app/components/megamenu.js",
+			"app/components/iframetarget.js",
+			"app/directives/*.js",
+			"app/controllers/base.js",
+			"app/mobile/shell.js",
+			"app/controllers/tests.js"
+		],
+		"minify": {
+			"enabled": false,
+			"renameLocals": false
+		}
 	},
 	{
 		"outputFileName": "Scripts/vue.min.js",
@@ -104,6 +180,13 @@
 		"minify": { "enabled": false }
 	},
 	{
+		"outputFileName": "Scripts/locale-de.min.js",
+		"inputFiles": [
+			"app/localization/locale-de.js"
+		],
+		"minify": { "enabled": false }
+	},
+	{
 		"outputFileName": "Scripts/eusign.js",
 		"inputFiles": [
 			"app/services/eusign.js"
@@ -136,6 +219,7 @@
 			"app/services/dataservice.js",
 			"app/components/include.js",
 			"app/components/modal.js",
+			"app/components/waitcursor.js",
 			"app/components/toastr.js",
 			//"app/standalone/filters.js",
 			"app/standalone/controller.js",
@@ -150,6 +234,7 @@
 			"app/services/locale.js",
 			"app/platform/polyfills.js",
 			"app/platform/webvue.js",
+			"app/services/const.js",
 			"app/services/utils.js",
 			"app/services/url.js",
 			"app/services/period.js",
@@ -165,6 +250,7 @@
 			"app/site/store.js",
 			"app/components/collectionview.js",
 			"app/components/pager.js",
+			"app/components/include.js",
 			"app/controllers/base.js"
 		],
 		"minify": { "enabled": false }
@@ -175,6 +261,7 @@
 			"app/server/app.js",
 			"app/server/locale.js",
 			"app/server/platform.js",
+			"app/services/const.js",
 			"app/services/utils.js",
 			"app/services/period.js",
 			"app/services/validators.js",

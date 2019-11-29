@@ -17,6 +17,18 @@ using A2v10.Infrastructure;
 
 namespace A2v10RuntimeNet
 {
+	// see cefscheme.cpp & resource files
+	public enum LicenseErrors
+	{
+		NoError = 0,
+		NotInstalled = 1,
+		BadSignature = 2,
+		Expired = 3,
+		BadCompany = 4,
+		FileCorrupt = 5,
+		Unknown = 6
+	}
+
 	public static class Desktop
 	{
 		static IScriptContext _scriptContext;
@@ -139,16 +151,18 @@ namespace A2v10RuntimeNet
 			ServiceLocator.Start = (IServiceLocator service) =>
 			{
 				IProfiler profiler = new DesktopProfiler();
-				IApplicationHost host = new DesktopApplicationHost(profiler);
+				DesktopApplicationHost host = new DesktopApplicationHost(profiler);
 				ILocalizer localizer = new DesktopLocalizer(host);
 				IDbContext dbContext = new SqlDbContext(
 					profiler as IDataProfiler,
 					host as IDataConfiguration,
 					localizer as IDataLocalizer,
-					tenantManager:null); /*host as ITenantManager*/
+					tenantManager: null); /*host as ITenantManager*/
 				IRenderer renderer = new XamlRenderer(profiler, host);
 				IWorkflowEngine wfEngine = new WorkflowEngine(host, dbContext, null);
 				IDataScripter scripter = new VueDataScripter(host, localizer);
+				IUserStateManager userStateManager = new DesktopUserStateManager(host, dbContext);
+				ILicenseManager licManager = new DesktopLicenseManager(dbContext);
 				service.RegisterService<IProfiler>(profiler);
 				service.RegisterService<IApplicationHost>(host);
 				service.RegisterService<IDbContext>(dbContext);
@@ -156,12 +170,16 @@ namespace A2v10RuntimeNet
 				service.RegisterService<IWorkflowEngine>(wfEngine);
 				service.RegisterService<IDataScripter>(scripter);
 				service.RegisterService<ILocalizer>(localizer);
+				service.RegisterService<IUserStateManager>(userStateManager);
+				service.RegisterService<ISupportUserInfo>(host);
+				service.RegisterService<ILicenseManager>(licManager);
 				host.TenantId = 1;
 			};
 		}
 
 		static String _lastMime = String.Empty;
 		static String _lastContentDisposition = String.Empty;
+		static Int32 _lastStatusCode = 0;
 
 		public static String GetLastMime()
 		{
@@ -173,6 +191,43 @@ namespace A2v10RuntimeNet
 			return _lastContentDisposition;
 		}
 
+		public static Int32 GetLastStatusCode()
+		{
+			return _lastStatusCode;
+		}
+
+		public static Int32 VerifyLicense()
+		{
+			try
+			{
+				String companyCode = DesktopApplicationHost.GetCompanyCode();
+				var licManager = ServiceLocator.Current.GetService<ILicenseManager>();
+				if (String.IsNullOrEmpty(companyCode))
+					return (Int32)LicenseErrors.BadCompany;
+				var rc = licManager.VerifyLicense(companyCode);
+				switch (rc)
+				{
+					case LicenseState.Ok:
+						return (Int32)LicenseErrors.NoError;
+					case LicenseState.NotFound:
+						return (Int32)LicenseErrors.NotInstalled;
+					case LicenseState.InvalidSignature:
+						return (Int32)LicenseErrors.BadSignature;
+					case LicenseState.Expired:
+						return (Int32)LicenseErrors.Expired;
+					case LicenseState.InvalidCompany:
+						return (Int32)LicenseErrors.BadCompany;
+					case LicenseState.FileCorrupt:
+						return (Int32)LicenseErrors.FileCorrupt;
+				}
+				return (Int32)LicenseErrors.Unknown;
+			}
+			catch (Exception /*ex*/)
+			{
+				return (Int32)LicenseErrors.Unknown;
+			}
+		}
+
 		public static Byte[] ProcessRequest(String url, String search, Byte[] post, Boolean postMethod)
 		{
 			_lastContentDisposition = String.Empty;
@@ -181,6 +236,7 @@ namespace A2v10RuntimeNet
 			var result = dr.ProcessRequest(url, search, post, postMethod);
 			_lastMime = dr.MimeType;
 			_lastContentDisposition = dr.ContentDisposition ?? String.Empty;
+			_lastStatusCode = dr.StatusCode;
 			return result;
 		}
 

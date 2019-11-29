@@ -10,11 +10,15 @@ namespace A2v10.Xaml
 	{
 		public Object Content { get; set; }
 
-		internal virtual void MergeContent(TagBuilder tag, RenderContext context)
+		protected virtual void MergeContent(TagBuilder tag, RenderContext context)
 		{
 			var contBind = GetBinding(nameof(Content));
 			if (contBind != null)
+			{
 				tag.MergeAttribute("v-text", contBind.GetPathFormat(context));
+				if (contBind.NegativeRed)
+					tag.MergeAttribute(":class", $"$getNegativeRedClass({contBind.GetPath(context)})");
+			}
 		}
 
 		internal void RenderContent(RenderContext context)
@@ -22,7 +26,7 @@ namespace A2v10.Xaml
 			RenderContent(context, Content);
 		}
 
-		internal override void OnDispose()
+		public override void OnDispose()
 		{
 			base.OnDispose();
 			(Content as XamlElement)?.OnDispose();

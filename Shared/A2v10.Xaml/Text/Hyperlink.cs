@@ -25,9 +25,10 @@ namespace A2v10.Xaml
 
 		public HyperlinkStyle Style { get; set; }
 		public Boolean HideCaret { get; set; }
+		public String TestId { get; set; }
 
 
-		internal override void RenderElement(RenderContext context, Action<TagBuilder> onRender = null)
+		public override void RenderElement(RenderContext context, Action<TagBuilder> onRender = null)
 		{
 			if (SkipRender(context))
 				return;
@@ -94,6 +95,9 @@ namespace A2v10.Xaml
 			if (bHasDropDown)
 				tag.MergeAttribute("toggle", String.Empty);
 
+			if (!String.IsNullOrEmpty(TestId) && context.IsDebugConfiguration)
+				tag.MergeAttribute("test-id", TestId);
+
 			tag.RenderStart(context);
 
 			RenderIcon(context, Icon);
@@ -110,7 +114,7 @@ namespace A2v10.Xaml
 			}
 			else if (Content != null)
 			{
-				context.Writer.Write(context.Localize(Content.ToString()));
+				context.Writer.Write(context.LocalizeCheckApostrophe(Content.ToString()));
 			}
 
 			if (bHasDropDown && !addOn && !HideCaret)

@@ -1,4 +1,4 @@
-﻿// Copyright © 2015-2017 Alex Kukhtin. All rights reserved.
+﻿// Copyright © 2015-2019 Alex Kukhtin. All rights reserved.
 
 using System;
 using System.Collections.Generic;
@@ -62,8 +62,9 @@ namespace A2v10.Xaml
 		public Boolean Striped { get; set; }
 		public Boolean? Border { get; set; }
 		public Length Width { get; set; }
+		public Boolean Compact { get; set; }
 
-		internal override void RenderElement(RenderContext context, Action<TagBuilder> onRender = null)
+		public override void RenderElement(RenderContext context, Action<TagBuilder> onRender = null)
 		{
 			if (SkipRender(context))
 				return;
@@ -75,6 +76,7 @@ namespace A2v10.Xaml
 			sheet.AddCssClassBool(Hover, "hover");
 			sheet.AddCssClassBool(Striped, "striped");
 			sheet.AddCssClassBoolNo(Border, "border");
+			sheet.AddCssClassBool(Compact, "compact");
 			if (Width != null)
 				sheet.MergeStyle("width", Width.Value);
 			sheet.RenderStart(context);
@@ -163,7 +165,7 @@ namespace A2v10.Xaml
 				s.SetParent(this);
 		}
 
-		internal override void OnSetStyles()
+		public override void OnSetStyles()
 		{
 			base.OnSetStyles();
 			if (_header != null)

@@ -44,6 +44,19 @@
     <DefineConstants>TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
+    <TypeScriptTarget>ES2017</TypeScriptTarget>
+    <TypeScriptJSXEmit>None</TypeScriptJSXEmit>
+    <TypeScriptModuleKind>None</TypeScriptModuleKind>
+    <TypeScriptCompileOnSaveEnabled>True</TypeScriptCompileOnSaveEnabled>
+    <TypeScriptNoImplicitAny>False</TypeScriptNoImplicitAny>
+    <TypeScriptRemoveComments>False</TypeScriptRemoveComments>
+    <TypeScriptOutFile />
+    <TypeScriptOutDir />
+    <TypeScriptGeneratesDeclarations>True</TypeScriptGeneratesDeclarations>
+    <TypeScriptNoEmitOnError>True</TypeScriptNoEmitOnError>
+    <TypeScriptSourceMap>False</TypeScriptSourceMap>
+    <TypeScriptMapRoot />
+    <TypeScriptSourceRoot />
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="Microsoft.Web.Infrastructure, Version=1.0.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
@@ -78,10 +91,16 @@
   <ItemGroup>
     <Content Include="app\app.js" />
     <Content Include="app\components\calendar.js" />
+    <Content Include="app\components\timepicker.js" />
     <Content Include="app\components\iframetarget.js" />
     <Content Include="app\bootstrap\pager.js" />
+    <Content Include="app\components\companybutton.js" />
+    <Content Include="app\components\waitcursor.js" />
     <Content Include="app\controllers\iframe.js" />
+    <Content Include="app\controllers\tests.js" />
     <Content Include="app\directives\pageorient.js" />
+    <Content Include="app\localization\locale-de.js" />
+    <Content Include="app\mobile\shell.js" />
     <Content Include="app\server\app.js" />
     <Content Include="app\server\locale.js" />
     <Content Include="app\server\platform.js" />
@@ -91,6 +110,7 @@
     <Content Include="app\services\locale.js" />
     <Content Include="app\services\routing.js" />
     <Content Include="app\services\templates.js" />
+    <Content Include="app\services\const.js" />
     <Content Include="app\site\collectionview.js" />
     <Content Include="app\site\controller.js" />
     <Content Include="app\site\store.js" />
@@ -103,7 +123,7 @@
     <Content Include="app\components\doctitle.js" />
     <Content Include="app\components\feedback.js" />
     <Content Include="app\components\graphics.js" />
-    <Content Include="app\components\attachments.js" />
+    <Content Include="app\components\fileupload.js" />
     <Content Include="app\components\image.js" />
     <Content Include="app\components\list.js" />
     <Content Include="app\components\megamenu.js" />
@@ -164,7 +184,15 @@
     </Content>
     <Content Include="Less\Diagram.less" />
     <Content Include="Less\Table.less" />
+    <Content Include="Localization\de.xml" />
+    <Content Include="Localization\default.de.txt" />
+    <Content Include="scripts\locale-de.min.js" />
+    <Content Include="scripts\mobile.js" />
     <Content Include="TestMobile\index.html" />
+    <Content Include="TestMobile\testmobile.js" />
+    <Content Include="TestPages\d3hierarchy.html" />
+    <Content Include="TestPages\d3hierarchy.js" />
+    <Content Include="TestPages\JasmineTests.html" />
     <Content Include="TestPages\slot.html" />
     <Content Include="tests\format.js" />
     <Content Include="Less\TabBar.less" />
@@ -172,6 +200,23 @@
     <Content Include="Less.Mobile\Variables.less" />
     <Content Include="Less.Mobile\Site.Mobile.less" />
     <Content Include="Less.Mobile\Main.less" />
+    <Content Include="Less\CompanyButton.less" />
+    <Content Include="Less.Mobile\MainMenu.less" />
+    <Content Include="Less.Mobile\DataGrid.less" />
+    <Content Include="Less.Mobile\Modal.less" />
+    <Content Include="Less.Mobile\Control.less" />
+    <Content Include="Less.Mobile\CheckBox.less" />
+    <Content Include="Less.Mobile\Button.less" />
+    <Content Include="Less.Mobile\DropDown.less" />
+    <Content Include="Less.Mobile\List.less" />
+    <Content Include="Less.Mobile\Card.less" />
+    <Content Include="Less.Mobile\Layout.less" />
+    <Content Include="Less.Mobile\Text.less" />
+    <Content Include="Less.Mobile\Utlis.less" />
+    <Content Include="Less.Mobile\ToolBar.less" />
+    <Content Include="Less.Mobile\Grid.less" />
+    <Content Include="Less\WaitCursor.less" />
+    <Content Include="Less.Mobile\MobilePage.less" />
     <None Include="Web.Debug.config">
       <DependentUpon>Web.config</DependentUpon>
     </None>
@@ -218,12 +263,6 @@
     <Content Include="eusign.txt" />
     <Content Include="favicon.ico" />
     <Content Include="Global.asax" />
-    <Content Include="Less\Data_URI.css">
-      <DependentUpon>Data_URI.less</DependentUpon>
-    </Content>
-    <Content Include="Less\Data_URI.min.css">
-      <DependentUpon>Data_URI.css</DependentUpon>
-    </Content>
     <Content Include="Less\Variables.less" />
     <Content Include="Less\Site.less" />
     <Content Include="bower.json" />
@@ -310,7 +349,6 @@
     <Content Include="scripts\vue.js" />
     <Content Include="scripts\vue.min.js" />
     <Content Include="TestPages\attention.txt" />
-    <Content Include="TestPages\JasmineTests.html" />
     <Content Include="TestPages\datagridwithdata.html" />
     <Content Include="TestPages\datagrid.html" />
     <Content Include="TestPages\formcontrol.html" />

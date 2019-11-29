@@ -8,7 +8,7 @@ namespace A2v10.Xaml
 	{
 		public TextAlign Align { get; set; }
 
-		internal override void RenderElement(RenderContext context, Action<TagBuilder> onRender = null)
+		public override void RenderElement(RenderContext context, Action<TagBuilder> onRender = null)
 		{
 			if (SkipRender(context))
 				return;
@@ -19,7 +19,11 @@ namespace A2v10.Xaml
 			MergeAlign(input, context, Align);
 			var valBind = GetBinding(nameof(Value));
 			if (valBind != null)
+			{
 				input.MergeAttribute(":text", valBind.GetPathFormat(context)); // formatted
+				if (valBind.NegativeRed)
+					input.MergeAttribute(":class", $"$getNegativeRedClass({valBind.GetPath(context)})");
+			}
 			input.RenderStart(context);
 			RenderAddOns(context);
 			input.RenderEnd(context);

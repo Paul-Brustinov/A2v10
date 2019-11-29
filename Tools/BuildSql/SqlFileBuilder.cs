@@ -20,7 +20,8 @@ namespace BuildSql
 		public void Process()
 		{
 			String jsonPath = Path.Combine(_path, "sql.json");
-			if (!File.Exists(jsonPath)) {
+			if (!File.Exists(jsonPath))
+			{
 				Console.WriteLine($"File not found: {jsonPath}");
 			}
 
@@ -39,10 +40,11 @@ namespace BuildSql
 			File.Delete(outFilePath);
 			var nl = Environment.NewLine;
 			FileStream fw = null;
-			try {
+			try
+			{
 				fw = File.Open(outFilePath, FileMode.CreateNew, FileAccess.Write);
 				Console.WriteLine($"Writing {item.outputFile}");
-				using (var sw = new StreamWriter(fw))
+				using (var sw = new StreamWriter(fw, new UTF8Encoding(true)))
 				{
 					fw = null;
 					WriteVersion(item, sw);
@@ -52,6 +54,8 @@ namespace BuildSql
 						var inputPath = Path.Combine(_path, f);
 						Console.WriteLine($"\t{f}");
 						var inputText = File.ReadAllText(inputPath);
+						if (item.replaceSessionContext)
+							inputText = inputText.Replace("default(cast(session_context(N'TenantId') as int))", "default(1)");
 						sw.Write(inputText);
 						sw.WriteLine();
 					}

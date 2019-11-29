@@ -1,6 +1,6 @@
 ﻿// Copyright © 2015-2019 Alex Kukhtin. All rights reserved.
 
-// 20190223-7441
+// 20191101-7575
 // locale-uk.js
 
 "use strict";
@@ -17,14 +17,15 @@
 		$Next: 'Далі',
 		$Finish: 'Готово',
 		$Tasks: 'Задачі',
+		$Quit: 'Вихід',
 		$Save: 'Зберегти',
 		$NotSave: 'Не зберігати',
 		$Refresh: 'Оновити',
-		$Confirm: 'Підтведження',
+		$Confirm: 'Підтвердження',
 		$Error: 'Помилка',
 		$Message: 'Повідомлення',
 		$Help: 'Допомога',
-		$ConfirmClose: 'Підтведження закриття',
+		$ConfirmClose: 'Підтвердження закриття',
 		$MakeValidFirst: 'Спочатку виправте помилки',
 		$ElementWasChanged: 'Елемент було змінено. Зберегти зміни?',
 		$Profiling: 'Профілювання',
@@ -55,12 +56,14 @@
 		$CurrYear: 'Поточний рік',
 		$PrevYear: 'Попередній рік',
 		$AllPeriodData: 'За весь час',
+		$CustomPeriod: 'Довільно',
 		$License: 'ліцензія',
 		$HomePage: 'домашня сторінка',
 		$CreatedOpenSource: 'Створено з використанням програмного забезпечення з відкритим сирцевим кодом',
 		$Unknown: 'Не вказано',
 		$ChooseFile: 'Оберіть файл',
-		$AccessDenied: 'Доступ до системи заборонено!'
+		$AccessDenied: 'Доступ до системи заборонено!',
+		$PermissionDenied: 'Доступ заборонено!'
 	};
 
 	if (window.d3) {

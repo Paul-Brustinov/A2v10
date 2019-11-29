@@ -24,12 +24,13 @@
 					</Button.DropDown>
 				</Button>
 			</StackPanel>
-		<Toolbar Style="Default">
+		<Toolbar Style="Default" CssClass="my-toolbar">
 			<Button Icon="Add" Tip="Создать счет" Command="{BindCmd Create, Url={StaticResource OpenUrl}, Argument={Bind Root.$ForCreate}}">@[Create]</Button>
 			<Button Icon="ArrowOpen" Command="{BindCmd OpenSelected, Url={StaticResource OpenUrl}, Argument={Bind Documents}, NewWindow=False}">Открыть</Button>
 			<Button Icon="EyeDisabled" Command="{BindCmd OpenSelected, Url='/Sales/Invoice/Empty', Argument={Bind Documents}, NewWindow=False}">Открыть</Button>
 			<Button Icon="Delete" Command="{BindCmd DbRemoveSelected, Argument={Bind Documents}, Confirm='@[ConfirmDeleteDocument]'}">@[Delete]</Button>
-			<Button Icon="Download" Content="Експорт" Command="{BindCmd Export}"/>
+			<Button Icon="Download" Content="Експорт" Command="{BindCmd Export, Url='/sales/invoice/index', 
+				Argument={Bind Documents.$selected}}"/>
 			<Separator />
 			<Button Icon="Reload" Command="{BindCmd Reload}">@[Refresh]</Button>
 			<Button Icon="Plus" Command="{BindCmd Reload}" Content="Додати">
@@ -160,7 +161,7 @@
 		<Button>3</Button>
 	</StackPanel>
 
-	<TabBar Value="{Bind Root.$tabIndex}" DropShadow="None">
+	<TabBar Value="{Bind Root.$tabIndex}" DropShadow="None" Style="Wizard">
 		<TabButton ActiveValue="0">Вихідні</TabButton>
 		<TabButton ActiveValue="1">Вхідні</TabButton>
 		<TabButton ActiveValue="2">Непроведені</TabButton>

@@ -21,14 +21,20 @@ CCefApplication::~CCefApplication()
 // virtual 
 void CCefApplication::OnRegisterCustomSchemes(CefRawPtr<CefSchemeRegistrar> registrar)
 {
-	//return;
-	registrar->AddCustomScheme("http", 
-		true,  /* is_standard */
-		false, /* is_local*/
-		false, /* is_display_isolated */
-		false, /* is_secure*/
-		true,  /* is_cors_enabled*/
-		false  /* is_csp_bypassing*/);
+	int opts = 
+		cef_scheme_options_t::CEF_SCHEME_OPTION_STANDARD | 
+		cef_scheme_options_t::CEF_SCHEME_OPTION_LOCAL |
+		cef_scheme_options_t::CEF_SCHEME_OPTION_CORS_ENABLED;
+	
+	registrar->AddCustomScheme("http", opts);
+	/*
+		true,  /* is_standard * /
+		false, /* is_local* /
+		false, /* is_display_isolated * /
+		false, /* is_secure* /
+		true,  /* is_cors_enabled* /
+		false  /* is_csp_bypassing* /;
+	*/
 }
 
 // virtual 
@@ -41,13 +47,14 @@ void CCefApplication::OnBeforeCommandLineProcessing(const CefString& process_typ
 
 	command_line->AppendSwitchWithValue(L"disable-gpu", L"1");
 	command_line->AppendSwitchWithValue(L"disable-software-rasterizer", L"1");
+	command_line->AppendSwitchWithValue(L"enable-print-preview", L"1");
 }
 
 void CCefApplication::Destroy()
 {
 
 	CefClearSchemeHandlerFactories();
-	CefShutdown(); // CEF BUG for single process mode
+	//CefShutdown(); // CEF BUG for single process mode
 }
 
 // static 
@@ -62,6 +69,7 @@ void CCefApplication::Init(HINSTANCE hInstance)
 	settings.no_sandbox = true;
 	settings.windowless_rendering_enabled = false;
 	settings.remote_debugging_port = 5555; /// TODO
+	settings.background_color = 0xfff2f3f9; // BG_BRUSH_NORMAL (TABS)
 
 	m_bInit =  CefInitialize(args, settings, new CCefApplication(), nullptr);
 }
@@ -76,11 +84,14 @@ void CCefApplication::OnBeforeChildProcessLaunch(CefRefPtr<CefCommandLine> comma
 // virtual 
 void CCefApplication::OnContextCreated(CefRefPtr<CefBrowser> browser, CefRefPtr<CefFrame> frame, CefRefPtr<CefV8Context> context)
 {
+	auto moduleVersion = CModuleVersion::GetCurrentFullAppVersion();
+
 	// Retrieve the context's window object.
 	CefRefPtr<CefV8Value> global = context->GetGlobal();
 	
 	CefRefPtr<CefV8Value> host = CefV8Value::CreateObject(nullptr, nullptr);
-	CefRefPtr<CefV8Value> str = CefV8Value::CreateString("My Value!");
+	CefRefPtr<CefV8Value> str = CefV8Value::CreateString(moduleVersion.GetString());
+
 
 	CefRefPtr<CefV8Handler> upload = new CNativeUploadHandler();
 	CefRefPtr<CefV8Value> uploadFunc = CefV8Value::CreateFunction(L"upload", upload);

@@ -45,6 +45,7 @@
 ??0CCaptionButtons@@QAE@I@Z
 ??0CCaptionNavigateButtons@@QAE@XZ
 ?MouseMove@CCaptionButtonsBase@@QAE_NVCPoint@@@Z
+?DisableButton@CCaptionNavigateButtons@@QAE_NH_N@Z
 ?ClearHighlight@CCaptionButtonsBase@@QAE_NXZ
 ?PressButton@CCaptionButtonsBase@@QAE_NVCPoint@@PAVCWnd@@@Z
 ?Draw@CCaptionButtonsBase@@UAEXPAVCDC@@@Z
@@ -178,6 +179,7 @@
 ?SaveFileUTF8@CFileTools@@SA_NPB_W0@Z
 ?CombinePath@CFileTools@@SA?AV?$CStringT@_WV?$StrTraitMFC_DLL@_WV?$ChTraitsCRT@_W@ATL@@@@@ATL@@PB_W0@Z
 ;
-
+?GetCurrentFullAppVersion@CModuleVersion@@SA?AV?$CStringT@_WV?$StrTraitMFC_DLL@_WV?$ChTraitsCRT@_W@ATL@@@@@ATL@@XZ
+;
 
 

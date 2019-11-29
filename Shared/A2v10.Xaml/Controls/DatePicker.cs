@@ -7,14 +7,6 @@ using A2v10.Infrastructure;
 namespace A2v10.Xaml
 {
 
-	public enum DatePickerDropDownPlacement
-	{
-		BottomLeft,
-		BottomRight,
-		TopLeft,
-		TopRight
-	}
-
 	public enum DatePickerView
 	{
 		Day,
@@ -25,11 +17,11 @@ namespace A2v10.Xaml
 	{
 
 		public TextAlign Align { get; set; }
-		public DatePickerDropDownPlacement Placement { get; set; }
+		public DropDownPlacement Placement { get; set; }
 		public DatePickerView View { get; set; }
-		
 
-		internal override void RenderElement(RenderContext context, Action<TagBuilder> onRender = null)
+
+		public override void RenderElement(RenderContext context, Action<TagBuilder> onRender = null)
 		{
 			if (CheckDisabledModel(context))
 				return;
@@ -38,7 +30,7 @@ namespace A2v10.Xaml
 			MergeAttributes(input, context);
 			MergeDisabled(input, context);
 			MergeAlign(input, context, Align);
-			if (Placement  != DatePickerDropDownPlacement.BottomLeft)
+			if (Placement  != DropDownPlacement.BottomLeft)
 				input.AddCssClass("drop-" + Placement.ToString().ToKebabCase());
 			MergeValue(input, context);
 			input.MergeAttribute("view", View.ToString().ToLowerInvariant());

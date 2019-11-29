@@ -25,7 +25,7 @@ namespace A2v10.Xaml
 					 Replace("tabitem.item.$Number", "tabitem.number");
 		}
 
-		internal override void RenderElement(RenderContext context, Action<TagBuilder> onRender = null)
+		public override void RenderElement(RenderContext context, Action<TagBuilder> onRender = null)
 		{
 			if (SkipRender(context))
 				return;
@@ -115,14 +115,14 @@ namespace A2v10.Xaml
 				tab.SetParent(this);
 		}
 
-		internal override void OnSetStyles()
+		public override void OnSetStyles()
 		{
 			base.OnSetStyles();
 			foreach (var tab in Tabs)
 				tab.OnSetStyles();
 		}
 
-		internal override void OnDispose()
+		public override void OnDispose()
 		{
 			base.OnDispose();
 			foreach (var tab in Tabs)

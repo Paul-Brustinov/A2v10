@@ -35,7 +35,7 @@ namespace A2v10.Xaml
 		public String Content { get; set; }
 		public TagLabelStyle Style { get; set; }
 
-		internal override void RenderElement(RenderContext context, Action<TagBuilder> onRender = null)
+		public override void RenderElement(RenderContext context, Action<TagBuilder> onRender = null)
 		{
 			if (SkipRender(context))
 				return;
@@ -58,7 +58,7 @@ namespace A2v10.Xaml
 
 			span.RenderStart(context);
 			if (Content is String)
-				context.Writer.Write(context.Localize(Content.ToString()));
+				context.Writer.Write(context.LocalizeCheckApostrophe(Content.ToString()));
 			span.RenderEnd(context);
 		}
 	}
